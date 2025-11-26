@@ -23,7 +23,7 @@ app.use((req, res, next) => {
 });
 
 // Rutas
-app.use("/api/products", productRoutes);
+app.use("/api", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);

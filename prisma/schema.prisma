@@ -39,8 +39,9 @@ model Store {
   createdAt   DateTime @default(now())
 
   owner User @relation(fields: [ownerId], references: [id])
-}
 
+  products Product[]
+}
 
 model Product {
   id          Int       @id @default(autoincrement())
@@ -52,8 +53,8 @@ model Product {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  storeId     String
-  store       Store     @relation(fields: [storeId], references: [id])
+  storeId     String?      // nuevo FK
+  store       Store?       @relation(fields: [storeId], references: [id])
 
   CartItem  CartItem[]
   OrderItem OrderItem[]

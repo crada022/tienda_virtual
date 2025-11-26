@@ -11,13 +11,19 @@ import { isAdmin } from "../auth/isAdmin.middleware.js";
 
 const router = Router();
 
-// Público
-router.get("/", getProducts);
-router.get("/:id", getProduct);
+// Ruta para obtener los productos de una tienda (con autenticación)
+router.get("/stores/:storeId/products", authMiddleware, getProducts);
 
-// Solo ADMIN
-router.post("/", authMiddleware, isAdmin, createProduct);
-router.put("/:id", authMiddleware, isAdmin, updateProduct);
-router.delete("/:id", authMiddleware, isAdmin, deleteProduct);
+// Ruta para obtener un producto específico dentro de una tienda (con autenticación)
+router.get("/stores/:storeId/products/:productId", authMiddleware, getProduct);
+
+// Solo ADMIN puede crear productos para una tienda
+router.post("/stores/:storeId/products", authMiddleware, isAdmin, createProduct);
+
+// Solo ADMIN puede actualizar un producto de una tienda
+router.put("/stores/:storeId/products/:productId", authMiddleware, isAdmin, updateProduct);
+
+// Solo ADMIN puede eliminar un producto de una tienda
+router.delete("/stores/:storeId/products/:productId", authMiddleware, isAdmin, deleteProduct);
 
 export default router;

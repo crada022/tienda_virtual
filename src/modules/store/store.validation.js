@@ -7,8 +7,6 @@ export const createStoreSchema = Joi.object({
   email: Joi.string().email().optional(),
   description: Joi.string().max(500).optional(),
 
-  // 👇 IMPORTANTE: Prisma requiere INT
-  ownerId: Joi.number().integer().required(),
 
   // opcional
   domain: Joi.string().optional()
