@@ -1,12 +1,14 @@
 import api from "../axios";
 
-// Función para obtener las tiendas
 export const getStores = async () => {
   const response = await api.get("/stores");
-  return response.data; // Devuelve la lista de tiendas
+  const data = response.data;
+
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.stores)) return data.stores;
+  return [];
 };
 
-// Función para crear una tienda
 export const createStore = async (data) => {
   const response = await api.post("/stores", data);
   return response.data;

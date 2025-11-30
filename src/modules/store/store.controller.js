@@ -1,13 +1,18 @@
-import prisma from "../../config/db.js";
-import { createStoreSchema, updateStoreSchema } from "./store.validation.js";
+// src/modules/store/store.controller.js
 
-const generateDomain = (name) => {
-  const slug = name.toLowerCase().replace(/\s+/g, "-");
-  return `${slug}-${Date.now()}.com`;
-};
+import prisma from "../../config/db.js";  // BD GLOBAL
+import { createStoreSchema, updateStoreSchema } from "./store.validation.js";
+import { createDatabaseForStore } from "../../utils/createDatabase.js";
+import getPrismaClientForStore from "../../utils/database.js";
 
 // =========================
-// CREATE STORE
+// Helper para generar DB
+// =========================
+const generateDBName = (storeName) =>
+  "store_" + storeName.toLowerCase().replace(/\s+/g, "_");
+
+// =========================
+// CREATE STORE (GLOBAL DB + Tenant DB)
 // =========================
 export const createStore = async (req, res) => {
   try {
@@ -16,8 +21,10 @@ export const createStore = async (req, res) => {
 
     const { name, address, phone, email, description } = req.body;
 
-    const domain = generateDomain(name);
+    // GENERAR NOMBRE DE BASE DE DATOS
+    const dbName = generateDBName(name);
 
+    // 1️⃣ Crear registro en DB GLOBAL
     const store = await prisma.store.create({
       data: {
         name,
@@ -25,37 +32,38 @@ export const createStore = async (req, res) => {
         phone,
         email,
         description,
-        domain,
-        ownerId: req.user.id, // ← AUTOMÁTICO POR TOKEN
+        dbName,
+        ownerId: req.user.id
       },
     });
 
-    res.status(201).json({ message: "Store created successfully", store });
+    // 2️⃣ Crear la base del tenant + migraciones
+    await createDatabaseForStore(dbName);
+
+    res.status(201).json({
+      message: "Store and tenant database created successfully",
+      store
+    });
 
   } catch (err) {
+    console.log(err);
     res.status(500).json({ error: "Server error", detail: err.message });
   }
 };
 
-
 // =========================
-// GET STORES (paginated)
+// GET STORES (paginated FROM GLOBAL)
 // =========================
 export const getStores = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "", active } = req.query;
+    const { page = 1, limit = 10, search = "" } = req.query;
 
     const skip = (page - 1) * limit;
 
-  const where = {
-  ownerId: req.user.id,
-  name: { contains: search, mode: "insensitive" }
-};
-
-
-    if (active !== undefined) {
-      where.active = active === "true";
-    }
+    const where = {
+      ownerId: req.user.id,
+      name: { contains: search, mode: "insensitive" }
+    };
 
     const [stores, total] = await Promise.all([
       prisma.store.findMany({
@@ -80,22 +88,16 @@ export const getStores = async (req, res) => {
   }
 };
 
-
 // =========================
-// GET STORE BY ID
+// GET STORE BY ID (FROM GLOBAL)
 // =========================
 export const getStoreById = async (req, res) => {
   try {
     const store = await prisma.store.findFirst({
-      where: {
-        id: req.params.id,
-        ownerId: req.user.id
-      }
+      where: { id: req.params.id, ownerId: req.user.id }
     });
 
-    if (store.ownerId !== req.user.id)
-  return res.status(403).json({ error: "Unauthorized" });
-
+    if (!store) return res.status(404).json({ error: "Store not found" });
 
     res.json(store);
 
@@ -104,57 +106,94 @@ export const getStoreById = async (req, res) => {
   }
 };
 
-
 // =========================
-// UPDATE STORE
+// UPDATE STORE (GLOBAL)
 // =========================
 export const updateStore = async (req, res) => {
   try {
     const { error } = updateStoreSchema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
-    const store = await prisma.store.updateMany({
-      where: {
-        id: req.params.id,
-        ownerId: req.user.id
-      },
+    const updated = await prisma.store.updateMany({
+      where: { id: req.params.id, ownerId: req.user.id },
       data: req.body
     });
 
-    if (store.count === 0)
+    if (updated.count === 0)
       return res.status(404).json({ error: "Store not found" });
 
     const updatedStore = await prisma.store.findUnique({
       where: { id: req.params.id }
     });
 
-    res.json({ message: "Store updated successfully", store: updatedStore });
+    res.json({
+      message: "Store updated successfully",
+      store: updatedStore
+    });
 
   } catch (err) {
     res.status(500).json({ error: "Server error", detail: err.message });
   }
 };
 
-
 // =========================
-// SOFT DELETE
+// DELETE STORE (GLOBAL)
 // =========================
 export const deleteStore = async (req, res) => {
   try {
-    const store = await prisma.store.updateMany({
-      where: {
-        id: req.params.id,
-        ownerId: req.user.id
-      },
+    const deleted = await prisma.store.updateMany({
+      where: { id: req.params.id, ownerId: req.user.id },
       data: { active: false }
     });
 
-    if (store.count === 0)
+    if (deleted.count === 0)
       return res.status(404).json({ error: "Store not found" });
 
     res.json({ message: "Store deleted (soft delete)" });
 
   } catch (err) {
     res.status(500).json({ error: "Server error", detail: err.message });
+  }
+};
+export const getStorePublic = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const store = await prisma.store.findUnique({
+      where: { id },
+      include: {
+        products: true
+      }
+    });
+
+    if (!store) return res.status(404).json({ message: "Tienda no encontrada" });
+
+    return res.json(store);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error obteniendo tienda" });
+  }
+};
+export async function getStoreProductsPublic(req, res) {
+  try {
+    const { id } = req.params;
+
+    const products = await prisma.product.findMany({
+      where: { storeId: id }
+    });
+
+    return res.json(products); // 👈 aunque esté vacío, devuelve []
+  } catch (error) {
+    console.error("Error obteniendo productos públicos", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+export const generateStoreStyle = (req, res) => {
+  try {
+    // Lógica temporal para probar
+    return res.json({ message: "generateStoreStyle funciona correctamente" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error generando estilos de tienda" });
   }
 };

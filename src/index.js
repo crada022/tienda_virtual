@@ -7,6 +7,8 @@ import productRoutes from "./modules/product/product.routes.js";
 import cartRoutes from "./modules/cart/cart.routes.js";
 import orderRoutes from "./modules/orders/order.routes.js";
 import storeRoutes from "./modules/store/store.routes.js"; 
+import reviewRoutes from "./modules/review/review.routes.js";
+import aiRoutes from "./modules/ai/ai.routes.js";
 
 dotenv.config();
 
@@ -27,10 +29,10 @@ app.use("/api", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
-
+app.use("/api/reviews", reviewRoutes);
 app.use("/api/stores", storeRoutes);
 app.get("/", (req, res) => res.send("tutiendavirtual backend OK"));
-
+app.use("/api/ai", aiRoutes);
 // Healthcheck
 app.get("/health", async (req, res) => {
   try {

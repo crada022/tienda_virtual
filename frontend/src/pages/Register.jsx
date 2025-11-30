@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../api/services/authService"; // Asegúrate de importar correctamente
+import { register } from "../api/services/authService";
 
-export default function Login() {
+export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -12,24 +13,28 @@ export default function Login() {
     e.preventDefault();
     setError(null);
 
-    // Validación simple
-    if (!email || !password) {
+    if (!email || !password || !confirmPassword) {
       setError("Todos los campos son obligatorios.");
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+
     try {
-      const data = await login({ email, password });
-      localStorage.setItem("token", data.token); // Guardar el token
-      navigate("/dashboard"); // Redirigir a la página de Dashboard
+      const data = await register({ email, password });
+      localStorage.setItem("token", data.token); // Guardar el token de autenticación
+      navigate("/dashboard"); // Redirigir al panel de usuario o tienda
     } catch (err) {
-      setError("Credenciales inválidas. Por favor, intente nuevamente.");
+      setError("Hubo un error al registrar el usuario. Intente nuevamente.");
     }
   };
 
   return (
-    <div className="login-page">
-      <h2>Iniciar sesión</h2>
+    <div className="register-page">
+      <h2>Crear una cuenta</h2>
       <form onSubmit={handleSubmit}>
         <div>
           <label htmlFor="email">Correo electrónico</label>
@@ -51,8 +56,18 @@ export default function Login() {
             placeholder="Contraseña"
           />
         </div>
+        <div>
+          <label htmlFor="confirmPassword">Confirmar Contraseña</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirmar Contraseña"
+          />
+        </div>
         {error && <p className="error">{error}</p>}
-        <button type="submit">Iniciar sesión</button>
+        <button type="submit">Registrarse</button>
       </form>
     </div>
   );

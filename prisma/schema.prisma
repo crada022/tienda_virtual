@@ -24,6 +24,10 @@ model User {
   stores Store[]
   carts  Cart[] // si tienes carrito rel
   orders Order[]
+
+  // relaciones para reviews (inversas)
+  reviewsByUser  Review[] @relation("reviewsByUser")
+  reviewsForUser Review[] @relation("reviewsForUser")
 }
 
 model Store {
@@ -35,39 +39,45 @@ model Store {
   email       String?
   description String?
   domain      String?
+  dbName      String   @unique 
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
 
   owner User @relation(fields: [ownerId], references: [id])
 
   products Product[]
+
+  // relación inversa: reviews de la tienda
+  reviews Review[]
 }
 
 model Product {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   description String?
   price       Float
-  stock       Int       @default(0)
+  stock       Int      @default(0)
   image       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  storeId     String?      // nuevo FK
-  store       Store?       @relation(fields: [storeId], references: [id])
+  storeId String? // nuevo FK
+  store   Store?  @relation(fields: [storeId], references: [id])
 
   CartItem  CartItem[]
   OrderItem OrderItem[]
+
+  // relación inversa: reviews del producto
+  reviews Review[]
 }
 
 model Cart {
-  id      Int        @id @default(autoincrement())
-  userId  Int        @unique   // <-- agregar esto
-  user    User       @relation(fields: [userId], references: [id])
-  items   CartItem[]
-  updatedAt DateTime @updatedAt
+  id        Int        @id @default(autoincrement())
+  userId    Int        @unique // <-- agregar esto
+  user      User       @relation(fields: [userId], references: [id])
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
 }
-
 
 model CartItem {
   id        Int @id @default(autoincrement())
@@ -87,16 +97,15 @@ enum OrderStatus {
 }
 
 model Order {
-  id        Int      @id @default(autoincrement())
+  id        Int         @id @default(autoincrement())
   userId    Int
   total     Float
   status    OrderStatus @default(PENDING)
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
   items     OrderItem[]
 
   user User @relation(fields: [userId], references: [id])
 }
-
 
 model OrderItem {
   id        Int   @id @default(autoincrement())
@@ -107,4 +116,23 @@ model OrderItem {
 
   order   Order   @relation(fields: [orderId], references: [id])
   product Product @relation(fields: [productId], references: [id])
+}
+
+model Review {
+  id             Int      @id @default(autoincrement())
+  rating         Int // rango 1-5 (validar en controller)
+  comment        String?
+  reviewerId     Int
+  reviewer       User     @relation("reviewsByUser", fields: [reviewerId], references: [id])
+  reviewedUserId Int? // review para un usuario/vendedor (opcional)
+  reviewedUser   User?    @relation("reviewsForUser", fields: [reviewedUserId], references: [id])
+  productId      Int? // review para producto (opcional)
+  product        Product? @relation(fields: [productId], references: [id])
+  storeId        String? // review para tienda (opcional)
+  store          Store?   @relation(fields: [storeId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([productId])
+  @@index([storeId])
+  @@index([reviewedUserId])
 }

@@ -1,29 +1,38 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import "../styles/nav.css";
 
 const NavBar = () => {
+  const [open, setOpen] = useState(false);
+
   return (
     <nav className="app-nav">
       <div className="nav-inner">
-        <div className="brand">
-          <NavLink to="/" className="brand-link">TuTienda</NavLink>
+        <NavLink to="/" className="brand-link">
+          <div className="logo-mark">TT</div>
+          <div className="brand-text">TuTienda</div>
+        </NavLink>
+
+        <div className={`nav-center ${open ? "open" : ""}`}>
+          <div className="search">
+            <input placeholder="Buscar productos o tiendas..." />
+            <button className="search-btn">Buscar</button>
+          </div>
+
+          <ul className="nav-links">
+            <li><NavLink to="/stores/list" className={({isActive}) => isActive ? "active" : ""}>Tiendas</NavLink></li>
+            <li><NavLink to="/stores/create" className={({isActive}) => isActive ? "active" : ""}>Crear tienda</NavLink></li>
+            <li><NavLink to="/cart" className={({isActive}) => isActive ? "active" : ""}>Carrito</NavLink></li>
+            <li><NavLink to="/stores/:storeId/manage-products" className={({isActive}) => isActive ? "active" : ""}>Productos</NavLink></li>
+            <li><NavLink to="/products/1/reviews">Reseñas</NavLink></li>
+
+          </ul>
         </div>
 
-        <button className="nav-toggle" aria-label="Toggle navigation" onClick={() => {
-          document.querySelector(".nav-links").classList.toggle("open");
-        }}>
-          ☰
-        </button>
-
-        <ul className="nav-links">
-          <li><NavLink to="/" end activeclassname="active">Inicio</NavLink></li>
-          <li><NavLink to="/stores/list" activeclassname="active">Tiendas</NavLink></li>
-          <li><NavLink to="/manage-products" activeclassname="active">Productos</NavLink></li>
-          <li><NavLink to="/cart" activeclassname="active">Carrito</NavLink></li>
-          <li><NavLink to="/orders" activeclassname="active">Pedidos</NavLink></li>
-          <li><NavLink to="/profile" activeclassname="active">Mi perfil</NavLink></li>
-        </ul>
+        <div className="nav-actions">
+          <button className="btn-primary">Mi cuenta</button>
+          <button className="nav-toggle" onClick={() => setOpen(!open)}>☰</button>
+        </div>
       </div>
     </nav>
   );
