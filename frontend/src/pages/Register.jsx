@@ -1,74 +1,71 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { register } from "../api/services/authService";
+import { useAuth } from "../store/useAuth";
+import "./Login.css";
 
 export default function Register() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const auth = useAuth();
 
-  const handleSubmit = async (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-
-    if (!email || !password || !confirmPassword) {
-      setError("Todos los campos son obligatorios.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden.");
-      return;
-    }
-
+    if (!name || !email || !password) return setError("Todos los campos son obligatorios.");
+    if (password !== confirm) return setError("Las contraseñas no coinciden.");
+    setLoading(true);
     try {
-      const data = await register({ email, password });
-      localStorage.setItem("token", data.token); // Guardar el token de autenticación
-      navigate("/dashboard"); // Redirigir al panel de usuario o tienda
+      const data = await register({ name, email, password });
+      const token = data?.token || data?.accessToken || data?.data?.token || (typeof data === "string" ? data : null);
+      if (token) {
+        localStorage.setItem("token", token);
+        if (auth && typeof auth.setToken === "function") auth.setToken(token);
+        navigate("/dashboard", { replace: true });
+      } else {
+        navigate("/login", { replace: true });
+      }
     } catch (err) {
-      setError("Hubo un error al registrar el usuario. Intente nuevamente.");
+      const msg = err?.message || (err?.statusText ? `${err.status}: ${err.statusText}` : "Error registrando usuario.");
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="register-page">
-      <h2>Crear una cuenta</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="email">Correo electrónico</label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Correo electrónico"
-          />
-        </div>
-        <div>
-          <label htmlFor="password">Contraseña</label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Contraseña"
-          />
-        </div>
-        <div>
-          <label htmlFor="confirmPassword">Confirmar Contraseña</label>
-          <input
-            type="password"
-            id="confirmPassword"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirmar Contraseña"
-          />
-        </div>
-        {error && <p className="error">{error}</p>}
-        <button type="submit">Registrarse</button>
-      </form>
+    <div className="login-page">
+      <div className="login-card">
+        <h2>Crear cuenta</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Nombre</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre completo" />
+          </div>
+          <div className="form-group">
+            <label>Correo electrónico</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo electrónico" />
+          </div>
+          <div className="form-group">
+            <label>Contraseña</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" />
+          </div>
+          <div className="form-group">
+            <label>Confirmar contraseña</label>
+            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Confirmar contraseña" />
+          </div>
+          {error && <p className="error" role="alert">{error}</p>}
+          <div className="actions">
+            <button type="submit" disabled={loading}>{loading ? "Creando..." : "Crear cuenta"}</button>
+            <span className="small-note">¿Ya tienes cuenta? <a href="/login">Inicia sesión</a></span>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

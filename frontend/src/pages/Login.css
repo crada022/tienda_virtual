@@ -1,0 +1,114 @@
+/* Estilos para Login.jsx - diseño centrado, tarjeta limpia y botón con gradiente */
+
+:root{
+  --bg-start: #f6f9ff;
+  --bg-end: #eef6ff;
+  --card-bg: #ffffff;
+  --muted: #7a8493;
+  --primary-start: #2563eb;
+  --primary-end: #06b6d4;
+  --danger: #ef4444;
+  --radius: 12px;
+  --shadow: 0 8px 30px rgba(18, 33, 80, 0.08);
+  font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+html,body,#root{
+  height:100%;
+}
+
+.login-page{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: linear-gradient(180deg, var(--bg-start), var(--bg-end));
+  padding:24px;
+}
+
+.login-card{
+  width:100%;
+  max-width:420px;
+  background:var(--card-bg);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:28px;
+  border: 1px solid rgba(16,24,40,0.04);
+}
+
+.login-card h2{
+  margin:0 0 14px 0;
+  font-size:20px;
+  color:#0b1220;
+}
+
+.form-group{
+  margin-bottom:14px;
+}
+
+label{
+  display:block;
+  font-size:13px;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+
+input[type="email"],
+input[type="password"]{
+  width:100%;
+  padding:12px 14px;
+  border-radius:8px;
+  border:1px solid rgba(16,24,40,0.06);
+  background: #fafbff;
+  font-size:14px;
+  color:#10203a;
+  box-sizing:border-box;
+  transition:box-shadow .15s, border-color .15s;
+}
+
+input:focus{
+  outline:none;
+  border-color: rgba(37,99,235,0.9);
+  box-shadow: 0 4px 14px rgba(37,99,235,0.12);
+}
+
+.error{
+  color:var(--danger);
+  font-size:13px;
+  margin:6px 0 0 0;
+}
+
+.actions{
+  margin-top:18px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:space-between;
+}
+
+button[type="submit"]{
+  cursor:pointer;
+  border:0;
+  padding:10px 16px;
+  border-radius:10px;
+  color:white;
+  font-weight:600;
+  background: linear-gradient(90deg, var(--primary-start), var(--primary-end));
+  box-shadow: 0 8px 20px rgba(6,182,212,0.12);
+  transition:transform .08s ease, box-shadow .12s ease, opacity .12s;
+}
+
+button[type="submit"]:active{ transform: translateY(1px); }
+button[type="submit"]:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+
+/* utilidades */
+.small-note{
+  font-size:13px;
+  color:var(--muted);
+}
+
+/* responsive */
+@media (max-width:480px){
+  .login-card{ padding:20px; border-radius:10px; }
+  button[type="submit"]{ width:100%; }
+}

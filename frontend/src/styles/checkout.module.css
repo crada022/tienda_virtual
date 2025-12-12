@@ -1,0 +1,19 @@
+.checkout-wrap { max-width:1100px; margin:18px auto; padding: 0 18px; }
+.checkout-main { display:flex; gap:20px; }
+.checkout-main h2 { margin-bottom:12px }
+.cart-list { flex:1; display:grid; gap:10px; }
+.cart-item { display:flex; gap:12px; align-items:center; padding:12px; background:var(--card-bg,#fff); border-radius:10px }
+.cart-item img { width:88px; height:68px; object-fit:cover; border-radius:8px }
+.ci-body { flex:1 }
+.ci-name { font-weight:700 }
+.ci-meta { font-size:13px; color:var(--muted) }
+.ci-sub { font-weight:700 }
+.billing-box { width:360px; background:var(--card-bg,#fff); padding:14px; border-radius:10px }
+.billing-box h3 { margin-top:0 }
+.billing-box label { display:block; font-size:13px; margin-top:8px }
+.billing-box input { width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid rgba(0,0,0,0.06) }
+.checkout-footer { display:flex; justify-content:space-between; align-items:center; margin-top:12px }
+.actions { display:flex; gap:8px }
+.btn-outline { padding:8px 12px; border-radius:8px; border:1px solid rgba(0,0,0,0.08); background:transparent }
+.btn-add { padding:10px 14px; border-radius:10px; background:linear-gradient(90deg,#0a74ff,#00b386); color:#fff; border:none }
+@media (max-width:900px) { .checkout-main { flex-direction:column } .billing-box { width:100% } }

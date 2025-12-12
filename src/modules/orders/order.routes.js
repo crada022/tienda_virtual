@@ -8,11 +8,14 @@ import {
   getOrder,
   updateOrderStatus
 } from "./order.controller.js";
+import { createOrderWithItems } from "./order.controller.js";
 
 const router = Router();
 
 // Crear pedido
 router.post("/", authMiddleware, createOrder);
+// Crear pedido usando items (preserva precio enviado por frontend)
+router.post("/create-from-items", authMiddleware, createOrderWithItems);
 
 // Listar pedidos del usuario
 router.get("/", authMiddleware, listMyOrders);

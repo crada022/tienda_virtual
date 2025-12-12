@@ -3,7 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { getStores } from "../api/services/storeService";
 import { useStoreContext } from "../store/useStoreContext";
 import "../App.css";
+import "./StoresList.css"; 
 import { PUBLIC_STORE_URL } from "../config";
+import { deleteStore } from "../api/services/storeService";
+
 export default function StoresList() {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +31,19 @@ export default function StoresList() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Nuevo: handler para eliminar tienda
+  const handleDelete = async (storeId, storeName) => {
+    const ok = window.confirm(`Eliminar la tienda "${storeName}"? Esta acción es irreversible.`);
+    if (!ok) return;
+    try {
+      await deleteStore(storeId);
+      setStores(prev => prev.filter(s => s.id !== storeId));
+    } catch (err) {
+      console.error("Error deleting store:", err);
+      alert("Error al eliminar la tienda. Revisa la consola para más detalles.");
+    }
+  };
 
   if (loading) {
     console.log("StoresList se está renderizando", stores);
@@ -62,69 +78,63 @@ export default function StoresList() {
           )}
 
           {stores.map(store => (
-            <article key={store.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: 12,
-                  background: "linear-gradient(135deg,#09202b,#112b3a)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#9fb3c7",
-                  fontWeight: 700
-                }}>
-                  {store.name?.slice(0, 2).toUpperCase()}
-                </div>
+            <article key={store.id} className="card store-card">
+              <div className="store-card-top">
+                <div className="store-logo">{store.name?.slice(0, 2).toUpperCase()}</div>
 
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12 }}>
+                <div className="store-meta" style={{ flex: 1 }}>
+                  <div className="store-meta-row">
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: 16 }}>{store.name}</div>
-                      <div className="muted" style={{ marginTop: 6 }}>
-                        {store.description || "Sin descripción"}
-                      </div>
+                      <div className="store-name">{store.name}</div>
+                      <div className="muted store-desc" style={{ marginTop: 6 }}>{store.description || "Sin descripción"}</div>
                     </div>
 
                     <div style={{ textAlign: "right" }}>
-                      <div className="muted" style={{ fontSize: 13 }}>{store.email || "—"}</div>
-                      <div className="muted" style={{ fontSize: 13 }}>{store.phone || "—"}</div>
+                      <div className="muted small">{store.email || "—"}</div>
+                      <div className="muted small">{store.phone || "—"}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                <div className="muted">
-                  Creada: {store.createdAt ? new Date(store.createdAt).toLocaleDateString() : "—"}
-                </div>
+              <div className="store-card-footer">
+                <div className="muted small">Creada: {store.createdAt ? new Date(store.createdAt).toLocaleDateString() : "—"}</div>
 
-                <div style={{ display: "flex", gap: 8 }}>
+                <div className="card-actions">
                   <button
                     className="btn btn-ghost"
                     onClick={() => {
-                      setCurrentStoreId(store.id);          // 🔥 Establece tienda activa
+                      setCurrentStoreId(store.id);
                       navigate(`/stores/${store.id}/manage-products`);
                     }}
                   >
                     Gestionar productos
                   </button>
+
                   <button
-  className="btn btn-primary"
-  onClick={() => navigate("/stores/ai/generate")}
->
-  Crear tienda con IA
-</button>
+                    className="btn btn-outline"
+                    onClick={() => {
+                      // ver versión pública en nueva pestaña
+                      window.open(`${PUBLIC_STORE_URL}/stores/${store.id}`, "_blank");
+                    }}
+                  >
+                    Ver tienda
+                  </button>
 
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => navigate(`/stores/${store.id}/edit`)}
+                  >
+                    Editar
+                  </button>
 
-  <button
-  className="btn btn-primary"
-  onClick={() => window.open(`${PUBLIC_STORE_URL}/stores/${store.id}`, "_blank")}
->
-  Ver tienda
-</button>
-
+                  {/* Nuevo botón para eliminar tienda */}
+                  <button
+                    className="btn btn-danger"
+                    onClick={() => handleDelete(store.id, store.name)}
+                  >
+                    Eliminar
+                  </button>
                 </div>
               </div>
             </article>

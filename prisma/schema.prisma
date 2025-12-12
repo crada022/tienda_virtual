@@ -7,86 +7,143 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-
-  // relaciones...
-  stores Store[]
-  carts  Cart[] // si tienes carrito rel
-  orders Order[]
-
-  // relaciones para reviews (inversas)
-  reviewsByUser  Review[] @relation("reviewsByUser")
+  email          String   @unique
+  password       String
+  createdAt      DateTime @default(now())
+  name           String?
+  role           Role     @default(USER)
+  id             Int      @id @default(autoincrement())
+  carts          Cart?
+  orders         Order[]
   reviewsForUser Review[] @relation("reviewsForUser")
+  reviewsByUser  Review[] @relation("reviewsByUser")
+  stores         Store[]
 }
 
 model Store {
-  id          String   @id @default(uuid())
-  ownerId     Int
+  id          String    @id @default(uuid())
   name        String
-  address     String?
-  phone       String?
-  email       String?
-  description String?
   domain      String?
-  dbName      String   @unique 
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-
-  owner User @relation(fields: [ownerId], references: [id])
-
-  products Product[]
-
-  // relación inversa: reviews de la tienda
-  reviews Review[]
+  createdAt   DateTime  @default(now())
+  ownerId     Int
+  active      Boolean   @default(true)
+  address     String?
+  description String?
+  email       String?
+  phone       String?
+  bannerUrl   String?
+  colorTheme  String?
+  dbName      String    @unique
+  layoutType  String?
+  style       String?
+  existe      Boolean?  @default(true)
+  products    Product[]
+  reviews     Review[]
+  owner       User      @relation(fields: [ownerId], references: [id])
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   name        String
   description String?
   price       Float
-  stock       Int      @default(0)
+  stock       Int         @default(0)
   image       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  storeId     String?
+  categoryId  String?
+  CartItem    CartItem[]
+  OrderItem   OrderItem[]
+  category    Category?   @relation(fields: [categoryId], references: [id])
+  store       Store?      @relation(fields: [storeId], references: [id])
+  reviews     Review[]
 
-  storeId String? // nuevo FK
-  store   Store?  @relation(fields: [storeId], references: [id])
-
-  CartItem  CartItem[]
-  OrderItem OrderItem[]
-
-  // relación inversa: reviews del producto
-  reviews Review[]
+  @@index([categoryId])
+  @@index([storeId])
 }
 
 model Cart {
   id        Int        @id @default(autoincrement())
-  userId    Int        @unique // <-- agregar esto
+  userId    Int        @unique
+  updatedAt DateTime   @updatedAt
   user      User       @relation(fields: [userId], references: [id])
   items     CartItem[]
-  updatedAt DateTime   @updatedAt
 }
 
 model CartItem {
-  id        Int @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   cartId    Int
   productId Int
-  quantity  Int @default(1)
+  quantity  Int     @default(1)
+  cart      Cart    @relation(fields: [cartId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
 
-  cart    Cart    @relation(fields: [cartId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+model Order {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  total     Float
+  createdAt DateTime    @default(now())
+  status    OrderStatus @default(PENDING)
+  user      User        @relation(fields: [userId], references: [id])
+  items     OrderItem[]
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+  price     Float
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Review {
+  id             Int      @id @default(autoincrement())
+  rating         Int
+  comment        String?
+  reviewerId     Int
+  reviewedUserId Int?
+  productId      Int?
+  storeId        String?
+  createdAt      DateTime @default(now())
+  product        Product? @relation(fields: [productId], references: [id])
+  reviewedUser   User?    @relation("reviewsForUser", fields: [reviewedUserId], references: [id])
+  reviewer       User     @relation("reviewsByUser", fields: [reviewerId], references: [id])
+  store          Store?   @relation(fields: [storeId], references: [id])
+
+  @@index([productId])
+  @@index([storeId])
+  @@index([reviewedUserId])
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  storeId     String
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@unique([storeId, name])
+  @@index([storeId])
+}
+
+enum Role {
+  USER
+  ADMIN
 }
 
 enum OrderStatus {
@@ -94,45 +151,4 @@ enum OrderStatus {
   PAID
   SHIPPED
   CANCELLED
-}
-
-model Order {
-  id        Int         @id @default(autoincrement())
-  userId    Int
-  total     Float
-  status    OrderStatus @default(PENDING)
-  createdAt DateTime    @default(now())
-  items     OrderItem[]
-
-  user User @relation(fields: [userId], references: [id])
-}
-
-model OrderItem {
-  id        Int   @id @default(autoincrement())
-  orderId   Int
-  productId Int
-  quantity  Int
-  price     Float
-
-  order   Order   @relation(fields: [orderId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
-}
-
-model Review {
-  id             Int      @id @default(autoincrement())
-  rating         Int // rango 1-5 (validar en controller)
-  comment        String?
-  reviewerId     Int
-  reviewer       User     @relation("reviewsByUser", fields: [reviewerId], references: [id])
-  reviewedUserId Int? // review para un usuario/vendedor (opcional)
-  reviewedUser   User?    @relation("reviewsForUser", fields: [reviewedUserId], references: [id])
-  productId      Int? // review para producto (opcional)
-  product        Product? @relation(fields: [productId], references: [id])
-  storeId        String? // review para tienda (opcional)
-  store          Store?   @relation(fields: [storeId], references: [id])
-  createdAt      DateTime @default(now())
-
-  @@index([productId])
-  @@index([storeId])
-  @@index([reviewedUserId])
 }

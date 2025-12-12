@@ -1,0 +1,11 @@
+.orders-list { display: grid; gap: 12px; }
+.order-card {
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 6px 18px rgba(10,12,30,0.04);
+}
+.order-top { display:flex; justify-content:space-between; align-items:center; gap:10px }
+.order-items { margin-top:10px; display:grid; gap:8px }
+.continue-btn { padding:8px 12px; border-radius:10px; background:linear-gradient(90deg,#0a74ff,#00b386); color:#fff; border:none; font-weight:700; cursor:pointer }
+.order-badge { padding:6px 10px; border-radius:8px; background:rgba(0,0,0,0.04); font-size:12px }

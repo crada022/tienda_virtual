@@ -1,44 +1,73 @@
 // src/modules/ai/ai.service.js
-import { OpenAI } from "openai";
-import "dotenv/config";
+import OpenAI from "openai";
 
-// Inicializa OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Función para generar plantilla de tienda
-export const generateStoreTemplate = async (prompt) => {
+/**
+ * Genera una plantilla de tienda basada en el prompt/descripción.
+ * Devuelve un objeto con: name, description, bannerUrl, colorTheme, layoutType, style, products[]
+ */
+export async function generateStoreTemplate(prompt) {
+  const instruct = `
+You are a storefront designer. Receive a user description and output STRICT JSON (no texto adicional).
+JSON schema:
+{
+  "name": string,
+  "description": string,
+  "bannerUrl": string | null,
+  "colorTheme": string | null,       // comma separated hex colors, e.g. "#0f172a,#f97316"
+  "layoutType": string,               // "hero" | "grid" | "catalog" | "minimal"
+  "style": string | null,             // optional CSS string or null
+  "products": [
+    { "name": string, "description": string, "price": number, "imageUrl": string }
+  ]
+}
+
+User description:
+${prompt}
+
+IMPORTANT: Output STRICT JSON only (no explanations). If you cannot build a field, set it to null.
+`;
+
+  const response = await openai.responses.create({
+    model: "gpt-4.1",
+    input: instruct,
+    max_output_tokens: 1200,
+    temperature: 0 // reduce variabilidad para JSON consistente
+  });
+
+  const raw = response.output_text || response.output?.[0]?.content?.[0]?.text || "";
+
+  // Limpiar posibles ```json ... ``` o texto extra
+  const cleaned = raw.trim().replace(/^```json/, "").replace(/```$/, "");
+
+  let data;
   try {
-    // Realizamos la llamada a la API de OpenAI para obtener la respuesta
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5-nano",
-      messages: [
-        { role: "system", content: "Eres un experto en la creación de tiendas online. Tu tarea es generar una respuesta en formato JSON que describa la tienda y las plantillas." },
-        { role: "user", content: `Genera una tienda online basada en: ${prompt}. Devuelve la respuesta en formato JSON.` },
-      ],
-    });
+    // Intentar parsear
+    const parsed = JSON.parse(cleaned);
 
-    // Obtener la respuesta de la IA
-    let storeTemplate = completion.choices[0].message.content;
+    // Normalizar campos
+    data = {
+      name: parsed.name || "Tienda generada",
+      description: parsed.description || "Descripción de tienda por defecto",
+      bannerUrl: parsed.bannerUrl || "https://via.placeholder.com/1200x400.png?text=Tienda",
+      colorTheme: parsed.colorTheme || "#0f172a,#f97316",
+      layoutType: ["hero", "grid", "catalog", "minimal"].includes(parsed.layoutType)
+        ? parsed.layoutType
+        : "grid",
+      style: parsed.style || null,
+      products: Array.isArray(parsed.products)
+        ? parsed.products.map(p => ({
+            name: p.name || "Producto",
+            description: p.description || "",
+            price: typeof p.price === "number" ? p.price : 0,
+            imageUrl: p.imageUrl || "https://via.placeholder.com/400x400.png?text=Producto"
+          }))
+        : []
+    };
 
-    // Verificamos que el contenido sea un JSON válido
-    if (typeof storeTemplate === 'string') {
-      try {
-        // Limpiar posibles caracteres no deseados
-        storeTemplate = storeTemplate.replace(/^¡.*\n|\n.*$/g, ''); // Eliminar cualquier encabezado o pie no deseado en la respuesta
-
-        // Intentamos convertir el string en JSON
-        storeTemplate = JSON.parse(storeTemplate);
-      } catch (parseError) {
-        console.error("Error al parsear la respuesta de AI:", parseError);
-        throw new Error("La respuesta de AI no es un JSON válido.");
-      }
-    }
-
-    return storeTemplate;
-  } catch (error) {
-    console.error("Error generando la tienda con IA:", error);
-    throw new Error("No se pudo generar la tienda con IA");
+    return data;
+  } catch (err) {
+    throw new Error("Error parsing JSON from OpenAI: " + err.message + " — raw:" + raw.slice(0, 1000));
   }
-};
+}

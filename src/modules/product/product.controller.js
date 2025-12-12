@@ -1,25 +1,27 @@
-import prisma from "../../config/db.js";
+import prisma from "../../config/db.js"; // BD GLOBAL
+import getPrismaClientForStore from "../../utils/database.js";
 
-// Función para verificar si la tienda existe
-const checkStoreExists = async (storeId) => {
-  const store = await prisma.store.findUnique({
-    where: { id: storeId },
-  });
-  return store;
+// Verificar si la tienda existe en la BD global
+const checkStore = async (storeId) => {
+  return prisma.store.findUnique({ where: { id: storeId } });
 };
 
-// Obtener productos de una tienda específica
+// =============================
+// Obtener productos del tenant
+// =============================
 export const getProducts = async (req, res) => {
   const { storeId } = req.params;
 
   try {
-    const products = await prisma.product.findMany({
-      where: { storeId }, // usar el campo escalar storeId
-    });
+    const store = await checkStore(storeId);
+    if (!store) return res.status(404).json({ error: "La tienda no existe" });
 
-    if (products.length === 0) {
-      return res.status(404).json({ error: "No se encontraron productos en esta tienda" });
-    }
+    // conectar al tenant DB
+    const tenantDB = getPrismaClientForStore(store.dbName);
+
+    const products = await tenantDB.product.findMany({
+      include: { category: true }, // incluir categoría
+    });
 
     res.json(products);
   } catch (err) {
@@ -28,110 +30,171 @@ export const getProducts = async (req, res) => {
   }
 };
 
-// Obtener un producto específico de una tienda
+// =============================
+// Obtener un producto
+// =============================
 export const getProduct = async (req, res) => {
   const { storeId, productId } = req.params;
-  const id = parseInt(productId, 10);
 
   try {
-    const product = await prisma.product.findFirst({
-      where: { id, storeId }, // findFirst para filtrar por id y storeId
+    const store = await checkStore(storeId);
+    if (!store) return res.status(404).json({ error: "La tienda no existe" });
+
+    const tenantDB = getPrismaClientForStore(store.dbName);
+
+    const product = await tenantDB.product.findUnique({
+      where: { id: Number(productId) },
+      include: { category: true }, // incluir categoría
     });
 
-    if (!product) {
+    if (!product)
       return res.status(404).json({ error: "Producto no encontrado" });
-    }
 
     res.json(product);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Error al obtener el producto", detail: err.message });
+    res.status(500).json({ error: "Error al obtener producto", detail: err.message });
   }
 };
 
-// Crear un nuevo producto para una tienda
+// =============================
+// Crear producto
+// =============================
 export const createProduct = async (req, res) => {
   const { storeId } = req.params;
-  const { name, description, price } = req.body;
+  const { name, description, price, stock, image, categoryId } = req.body;
+  console.log("USER AUTH:", req.user);  // <---- DEBUG
 
-  if (!name || !description || price == null) {
-    return res.status(400).json({ error: "Nombre, descripción y precio son requeridos" });
-  }
+  const userId = req.user?.id;  // <-- viene del middleware requireAuth
 
   try {
-    const store = await checkStoreExists(storeId);
-    if (!store) {
-      return res.status(404).json({ error: "La tienda no existe" });
+    if (!userId) {
+      return res.status(401).json({ error: "No autenticado" });
     }
 
-    const product = await prisma.product.create({
+    const store = await checkStore(storeId);
+    if (!store) return res.status(404).json({ error: "La tienda no existe" });
+
+    // 🔥 RESTRICCIÓN IMPORTANTE
+    if (store.ownerId !== userId) {
+      return res.status(403).json({ error: "No tienes permiso para administrar esta tienda" });
+    }
+
+    if (!name || !price) {
+      return res.status(400).json({ error: "nombre y precio requeridos" });
+    }
+
+    const tenantDB = getPrismaClientForStore(store.dbName);
+
+    // validar que la categoría existe (si se proporciona)
+    if (categoryId) {
+      const category = await tenantDB.category.findUnique({
+        where: { id: categoryId },
+      });
+      if (!category) {
+        return res.status(404).json({ error: "Categoría no encontrada" });
+      }
+    }
+
+    const newProduct = await tenantDB.product.create({
       data: {
-        name,
-        description,
-        price,
-        storeId, // usar scalar storeId
+        name: name.trim(),
+        description: description?.trim() || null,
+        price: Number(price),
+        stock: Number(stock) || 0,
+        image: image?.trim() || null,
+        categoryId: categoryId || null, // relacionar con categoría
       },
+      include: { category: true },
     });
 
-    res.status(201).json(product);
+    res.status(201).json(newProduct);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Error al crear producto", detail: err.message });
   }
 };
 
-// Actualizar un producto específico dentro de una tienda
+// =============================
+// Actualizar producto
+// =============================
 export const updateProduct = async (req, res) => {
   const { storeId, productId } = req.params;
-  const id = parseInt(productId, 10);
-  const { name, description, price } = req.body;
-
-  if (!name || !description || price == null) {
-    return res.status(400).json({ error: "Nombre, descripción y precio son requeridos" });
-  }
+  const { name, description, price, stock, image, categoryId } = req.body;
+  const userId = req.user?.id;
 
   try {
-    const store = await checkStoreExists(storeId);
+    if (!userId) {
+      return res.status(401).json({ error: "No autenticado" });
+    }
+
+    const store = await checkStore(storeId);
     if (!store) return res.status(404).json({ error: "La tienda no existe" });
 
-    const productExists = await prisma.product.findFirst({
-      where: { id, storeId },
+    if (store.ownerId !== userId) {
+      return res.status(403).json({ error: "No tienes permiso para administrar esta tienda" });
+    }
+
+    const tenantDB = getPrismaClientForStore(store.dbName);
+
+    // validar que la categoría existe (si se proporciona)
+    if (categoryId) {
+      const category = await tenantDB.category.findUnique({
+        where: { id: categoryId },
+      });
+      if (!category) {
+        return res.status(404).json({ error: "Categoría no encontrada" });
+      }
+    }
+
+    const updated = await tenantDB.product.update({
+      where: { id: Number(productId) },
+      data: {
+        name: name?.trim(),
+        description: description?.trim() || null,
+        price: Number(price),
+        stock: Number(stock),
+        image: image?.trim(),
+        categoryId: categoryId || null,
+      },
+      include: { category: true },
     });
 
-    if (!productExists) return res.status(404).json({ error: "Producto no encontrado" });
-
-    const updatedProduct = await prisma.product.update({
-      where: { id }, // actualizar por id (único)
-      data: { name, description, price },
-    });
-
-    res.json(updatedProduct);
+    res.json(updated);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Error al actualizar el producto", detail: err.message });
+    res.status(500).json({ error: "Error al actualizar producto", detail: err.message });
   }
 };
 
-// Eliminar un producto específico dentro de una tienda
+// =============================
+// Eliminar producto
+// =============================
 export const deleteProduct = async (req, res) => {
   const { storeId, productId } = req.params;
-  const id = parseInt(productId, 10);
+  const userId = req.user?.id;
 
   try {
-    const store = await checkStoreExists(storeId);
+    if (!userId) {
+      return res.status(401).json({ error: "No autenticado" });
+    }
+
+    const store = await checkStore(storeId);
     if (!store) return res.status(404).json({ error: "La tienda no existe" });
 
-    const productExists = await prisma.product.findFirst({
-      where: { id, storeId },
+    if (store.ownerId !== userId) {
+      return res.status(403).json({ error: "No tienes permiso para administrar esta tienda" });
+    }
+
+    const tenantDB = getPrismaClientForStore(store.dbName);
+
+    await tenantDB.product.delete({
+      where: { id: Number(productId) },
     });
-
-    if (!productExists) return res.status(404).json({ error: "Producto no encontrado" });
-
-    await prisma.product.delete({ where: { id } });
 
     res.status(204).send();
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Error al eliminar el producto", detail: err.message });
+    res.status(500).json({ error: "Error al eliminar producto", detail: err.message });
   }
 };

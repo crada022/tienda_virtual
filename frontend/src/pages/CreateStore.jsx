@@ -1,6 +1,8 @@
+// src/pages/CreateStore.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createStore } from "../api/services/storeService";
+import { createStore, createStoreWithAI } from "../api/services/storeService";
+import { createAIStore } from "../api/services/authService.js";
 import "../App.css";
 
 export default function CreateStore() {
@@ -14,6 +16,8 @@ export default function CreateStore() {
     domain: ""
   });
   const [loading, setLoading] = useState(false);
+  const [useAI, setUseAI] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -24,12 +28,29 @@ export default function CreateStore() {
     e.preventDefault();
     setLoading(true);
     try {
-      await createStore(form);
+      if (useAI) {
+        // envia la descripción / prompt a la ruta IA
+        const prompt = form.description || `Crea una tienda moderna llamada ${form.name || "Mi tienda"}.`;
+        const result = await createStoreWithAI(prompt);
+        alert("Tienda generada con IA");
+        navigate("/stores/list");
+        return;
+      }
+
+      const { name, description, /* ... */ } = form;
+      const payload = { name, description, /* ... */ };
+      const result = await createAIStore(payload);
       alert("Tienda creada");
       navigate("/stores/list");
     } catch (err) {
       console.error(err);
-      alert(err?.response?.data?.error || "Error creando la tienda");
+      // si err es Response de fetch, intenta leer body para mensaje
+      try {
+        const body = await err.json();
+        setError(body.message || "Error creando tienda");
+      } catch (_) {
+        setError("Error creando tienda");
+      }
     } finally {
       setLoading(false);
     }
@@ -73,14 +94,26 @@ export default function CreateStore() {
             </div>
 
             <div style={{ gridColumn: "1 / -1" }} className="form-row">
-              <label className="muted">Descripción</label>
+              <label className="muted">Descripción (si marcas IA se usará como prompt)</label>
               <textarea name="description" value={form.description} onChange={handleChange} />
             </div>
+
+            <div style={{ gridColumn: "1 / -1" }} className="form-row">
+              <label>
+                <input type="checkbox" checked={useAI} onChange={(e) => setUseAI(e.target.checked)} />
+                &nbsp; Sí, quiero que la tienda se genere automáticamente con IA
+              </label>
+            </div>
+
           </div>
+
+          {error && <div className="error-message">{error}</div>}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
             <button type="button" className="btn btn-ghost" onClick={() => navigate("/stores/list")}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? "Creando..." : "Crear tienda"}</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? (useAI ? "Generando..." : "Creando...") : (useAI ? "Generar con IA" : "Crear tienda")}
+            </button>
           </div>
         </form>
       </section>

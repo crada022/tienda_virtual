@@ -9,10 +9,16 @@ export default function getPrismaClientForStore(dbName) {
 
   // Evita crear el mismo cliente muchas veces
   if (!clients[dbName]) {
+    const user = process.env.PGUSER || "postgres";
+    const pass = process.env.PGPASSWORD || "admin";
+    const host = process.env.PGHOST || "localhost";
+    const port = process.env.PGPORT || 5432;
+    const url = `postgresql://${user}:${encodeURIComponent(pass)}@${host}:${port}/${dbName}?schema=public`;
+
     clients[dbName] = new PrismaClient({
       datasources: {
         db: {
-          url: `postgresql://postgres:admin@localhost:5432/tutienda?schema=public`,
+          url,
         },
       },
     });

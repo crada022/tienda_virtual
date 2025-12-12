@@ -1,0 +1,51 @@
+/* ...existing code... */
+.chat-widget {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 999;
+  font-family: inherit;
+}
+.chat-toggle {
+  background: #0a74ff;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+}
+.chat-window {
+  width: 320px;
+  max-height: 480px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+.chat-log {
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.msg.user .bubble { background: #e6f0ff; align-self: flex-end; }
+.msg.assistant .bubble { background: #f1f1f1; align-self: flex-start; }
+.bubble {
+  padding: 10px;
+  border-radius: 10px;
+  max-width: 80%;
+}
+.chat-input {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #eee;
+}
+.chat-input input { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #ddd; }
+.chat-input button { background: #0a74ff; color: white; padding: 8px 10px; border-radius: 8px; border: none; cursor: pointer; }
+/* ...existing code... */

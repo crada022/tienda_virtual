@@ -10,8 +10,14 @@ import {
   getStoreProductsPublic,
   generateStoreStyle // <-- IMPORTANTE
 } from "./store.controller.js";
+import { createAIStore } from "../ai/ai.controller.js";
+import express from "express";
+import * as storeController from "./store.controller.js";
+import { uploadLogo } from "./store.controller.js"; // ya exportado en controller
 
 const router = Router();
+// Proteger creación IA: requiere token válido
+router.post("/create/ai", requireAuth, createAIStore);
 
 // 🔓 RUTAS PÚBLICAS (primero)
 router.get("/public/:id", getStorePublic);
@@ -24,7 +30,7 @@ router.post("/public/:id/generate-style", generateStoreStyle);
 router.post("/", requireAuth, createStore);
 router.get("/", requireAuth, getStores);
 router.get("/:id", requireAuth, getStoreById);
-router.put("/:id", requireAuth, updateStore);
+router.put("/:id", uploadLogo, storeController.updateStore);
 router.delete("/:id", requireAuth, deleteStore);
 
 export default router;

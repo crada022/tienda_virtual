@@ -18,9 +18,31 @@ export const getMyCart = async (req, res) => {
 
 export const addItem = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { productId, quantity } = req.body;
+    // normalizar userId: puede venir como string (token) o number
+    let userId = req.user?.id;
+    if (!userId && req.userPayload) userId = req.userPayload.id;
+    console.debug("[cart.addItem] raw userId:", userId, typeof userId);
 
+    if (typeof userId === "string") {
+      if (/^\d+$/.test(userId)) {
+        userId = Number(userId);
+      } else if (req.user?.email || req.userPayload?.email) {
+        const email = req.user?.email || req.userPayload?.email;
+        try {
+          const u = await prisma.user.findUnique({ where: { email } });
+          if (u) userId = u.id;
+        } catch (e) {
+          console.error("[cart.addItem] error finding user by email", e.message || e);
+        }
+      }
+    }
+
+    if (!userId || typeof userId !== "number") {
+      console.error("[cart.addItem] invalid userId after normalization", userId);
+      return res.status(400).json({ error: "Usuario inválido para operaciones de carrito" });
+    }
+
+    const { productId, quantity } = req.body;
     const item = await addItemToCart(userId, productId, quantity);
     res.json(item);
   } catch (e) {
