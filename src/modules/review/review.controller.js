@@ -12,7 +12,7 @@ async function recalcAverage(target) {
   if (target.productId) {
     const productId = target.productId;
     const agg = await prisma.review.aggregate({
-      where: { productId, status: "APPROVED" },
+      where: { productId },
       _avg: { rating: true },
       _count: { id: true }
     });
@@ -20,34 +20,31 @@ async function recalcAverage(target) {
     const count = agg._count.id ?? 0;
     // Actualiza Product si existe
     try {
-      await prisma.product.update({
-        where: { id: productId },
-        data: { rating: avg, ratingCount: count }
-      });
+      // Si quieres mantener rating en Product, añade los campos en el schema Prisma
+      // y descomenta la siguiente update. Por ahora solo calculamos los valores.
+      // await prisma.product.update({ where: { id: productId }, data: { rating: avg, ratingCount: count } });
     } catch (e) {
       // Si no existe Product, ignorar
     }
   } else if (target.storeId) {
     const storeId = target.storeId;
     const agg = await prisma.review.aggregate({
-      where: { storeId, status: "APPROVED" },
+      where: { storeId },
       _avg: { rating: true },
       _count: { id: true }
     });
     const avg = agg._avg.rating ?? 0;
     const count = agg._count.id ?? 0;
     try {
-      await prisma.store.update({
-        where: { id: storeId },
-        data: { rating: avg, ratingCount: count }
-      });
+      // Similar a Product: actualizar store requiere campos rating/ratingCount en el schema
+      // await prisma.store.update({ where: { id: storeId }, data: { rating: avg, ratingCount: count } });
     } catch (e) {}
   }
 }
 
 export const createReview = async (req, res) => {
   try {
-    const authorId = req.user.id; // según tu auth middleware
+      const reviewerId = req.user.id; // según tu auth middleware
     const { rating, comment, productId, storeId, reviewedUserId } = req.body;
 
     // Sanitizar comentario
@@ -60,13 +57,13 @@ export const createReview = async (req, res) => {
     else type = "USER";
 
     // No permitir self-review (ejemplo)
-    if (reviewedUserId && reviewedUserId === authorId) {
+      if (reviewedUserId && reviewedUserId === reviewerId) {
       return res.status(400).json({ error: "No puedes reseñarte a ti mismo" });
     }
 
     // Evitar duplicados: 1 review por usuario por objetivo
-    const dupWhere = {
-      authorId,
+      const dupWhere = {
+        reviewerId,
       ...(productId ? { productId } : {}),
       ...(storeId ? { storeId } : {}),
       ...(reviewedUserId ? { reviewedUserId } : {})
@@ -79,23 +76,20 @@ export const createReview = async (req, res) => {
 
     // Si quieres validar que usuario compró el producto para permitir review,
     // valida aquí consultando tu tabla de orders. (si no, dejar verified=false)
-    const newReview = await prisma.review.create({
-      data: {
-        rating,
-        comment: safeComment,
-        authorId,
-        productId: productId ?? null,
-        storeId: storeId ?? null,
-        reviewedUserId: reviewedUserId ?? null,
-        type,
-        status: "APPROVED", // o "PENDING" si quieres moderación previa
-        verified: false
-      }
-    });
+      const newReview = await prisma.review.create({
+        data: {
+          rating,
+          comment: safeComment,
+          reviewerId,
+          productId: productId ?? null,
+          storeId: storeId ?? null,
+          reviewedUserId: reviewedUserId ?? null
+        }
+      });
 
-    // recalcular promedio si aplica
-    if (productId) await recalcAverage({ productId });
-    if (storeId) await recalcAverage({ storeId });
+    // recalcular promedio si aplica (desactivado hasta que el schema soporte rating/ratingCount)
+    // if (productId) await recalcAverage({ productId });
+    // if (storeId) await recalcAverage({ storeId });
 
     return res.status(201).json({ review: newReview });
   } catch (err) {
@@ -111,7 +105,7 @@ export const getReviewsForProduct = async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit || "10", 10), 100);
     const skip = (page - 1) * limit;
 
-    const where = { productId, status: "APPROVED" };
+    const where = { productId };
 
     // filtros opcionales
     if (req.query.rating) where.rating = parseInt(req.query.rating, 10);
@@ -141,7 +135,7 @@ export const getReviewsForStore = async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit || "10", 10), 100);
     const skip = (page - 1) * limit;
 
-    const where = { storeId, status: "APPROVED" };
+    const where = { storeId };
 
     if (req.query.rating) where.rating = parseInt(req.query.rating, 10);
 
@@ -173,9 +167,8 @@ export const getReviewsForUser = async (req, res) => {
       OR: [
         { reviewedUserId: userId },
         // también si quieres reviews hechas por el usuario:
-        // { authorId: userId }
-      ],
-      status: "APPROVED"
+        // { reviewerId: userId }
+      ]
     };
 
     const [total, reviews] = await Promise.all([
@@ -205,8 +198,8 @@ export const updateReview = async (req, res) => {
     const review = await prisma.review.findUnique({ where: { id }});
     if (!review) return res.status(404).json({ error: "Review no encontrada" });
 
-    // permiso: autor o admin (asume req.user.role)
-    if (review.authorId !== userId && req.user.role !== "ADMIN") {
+    // permiso: autor (reviewer) o admin (asume req.user.role)
+    if (review.reviewerId !== userId && req.user.role !== "ADMIN") {
       return res.status(403).json({ error: "No autorizado" });
     }
 
@@ -238,7 +231,7 @@ export const deleteReview = async (req, res) => {
     const review = await prisma.review.findUnique({ where: { id }});
     if (!review) return res.status(404).json({ error: "Review no encontrada" });
 
-    if (review.authorId !== userId && req.user.role !== "ADMIN") {
+    if (review.reviewerId !== userId && req.user.role !== "ADMIN") {
       return res.status(403).json({ error: "No autorizado" });
     }
 

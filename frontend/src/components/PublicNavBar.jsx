@@ -69,7 +69,7 @@ export default function PublicNavBar({ storeId, storeName }) {
 
         <nav className={styles.centerNav} role="navigation" aria-label="Navegación tienda">
           <Link to={`${basePath}/products`} className={styles.navItem}>Productos</Link>
-          <Link to={`${basePath}/reviews`} className={styles.navItem}>Reseñas</Link>
+          <Link to={`${basePath}/reviews`} className={styles.navItem}>Ver reseñas</Link>
         </nav>
 
         <div className={styles.rightArea} role="group" aria-label="Acciones usuario">

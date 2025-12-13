@@ -1,0 +1,100 @@
+.appNav {
+  background: #0d6efd;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.navInner {
+  max-width: 1200px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brandLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-weight: bold;
+  text-decoration: none;
+  font-size: 18px;
+}
+
+.logoMark {
+  background: #ffffff;
+  color: #0d6efd;
+  padding: 5px 8px;
+  border-radius: 8px;
+}
+
+.navCenter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search input {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.searchBtn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.navLinks {
+  display: flex;
+  gap: 12px;
+  list-style: none;
+}
+
+.navLinks a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.navActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn {
+  background: white;
+  color: #0d6efd;
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.btnGhost {
+  border: 1px solid white;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: white;
+  text-decoration: none;
+}
+
+.navToggle {
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 8px;
+  display: none;
+}

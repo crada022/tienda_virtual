@@ -5,7 +5,6 @@ import Login from "./pages/Login";
 import StoresList from "./pages/StoresList";
 import ManageProducts from "./pages/ManageProducts";
 import NavBar from "./components/NavBar";
-import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import PublicStore from "./pages/PublicStore";
 import StoreProducts from "./pages/StoreProducts";
@@ -21,6 +20,8 @@ import Dashboard from "./pages/Dashboard";
 import Account from "./pages/Account";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
+import PublicReviews from "./pages/PublicReviews";
+import StoreReviews from "./pages/StoreReviews";
 
 function ProtectedLayout() {
   const { token } = useAuth();
@@ -49,6 +50,8 @@ function App() {
         <Route path="/" element={token ? <Navigate to="/stores/create" /> : <Navigate to="/login" />} />
 
         {/* RUTAS PÚBLICAS DE TIENDAS (SPA routes) */}
+        <Route path="/stores/:storeId/reviews" element={<StoreReviews />} />
+        <Route path="/store/:storeId/reviews" element={<PublicReviews />} />
         <Route path="/stores/:storeId" element={<PublicStore />} />
         <Route path="/stores/:storeId/products" element={<StoreProducts />} />
         <Route path="/stores/:storeId/products/:productId" element={<ProductDetail />} />
@@ -57,7 +60,7 @@ function App() {
         {/* Rutas públicas de cuenta separadas: perfil y pedidos */}
         <Route path="/stores/:storeId/account" element={<StoreProfile />} />
         <Route path="/stores/:storeId/orders" element={<StoreOrders />} />
-          <Route path="/cart" element={<Cart />} />
+          
           <Route path="/cart/checkout" element={<Checkout />} />
           <Route path="/orders" element={<Orders />} />  
         {/* Layout protegido (NavBar + main) */}

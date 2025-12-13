@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom"; // <- agregado Link
-import { getStorePublic, getProductsPublic } from "../api/storesApi";
+import { getStorePublic, getProductsPublic, getStoreReviews } from "../api/storesApi";
 import PublicNavBar from "../components/PublicNavBar";
 import ChatWidget from "../components/ChatWidget";
 import styles from "../styles/publicStore.module.css";
@@ -14,6 +14,9 @@ export default function PublicStore() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+const [reviews, setReviews] = useState([]);
+const [newReview, setNewReview] = useState("");
+const [rating, setRating] = useState(5);
 
   // Auth modal state (token gestionada por PublicNavBar / localStorage)
   const [authOpen, setAuthOpen] = useState(false);
@@ -40,8 +43,16 @@ export default function PublicStore() {
         setStore(storeData);
         setProducts(productsData);
 
-        // Si la tienda trae style (CSS), lo inyectamos en un <style id="store-style">
-        // Pero scopeamos los selectores para que sólo afecte a la vista pública (.public-store)
+        // cargar reseñas usando el helper centralizado (ruta: /api/reviews/stores/:id)
+        try {
+          const reviewsData = await getStoreReviews(storeId);
+          // si la API devuelve { reviews: [...] } adaptamos
+          setReviews(Array.isArray(reviewsData) ? reviewsData : (reviewsData.reviews || []));
+        } catch (e) {
+          console.debug('No se pudieron cargar reseñas al inicio', e);
+          setReviews([]);
+        }
+
         if (storeData?.style) {
           const scopeCss = (css, scope) => {
             // Simple scoping: prefija cada selector fuera de @-rules con el scope
@@ -176,6 +187,89 @@ export default function PublicStore() {
           </div>
         )}
       </section>
+{/* RESEÑAS */}
+<section id="reviews" className={styles.reviewsSection}>
+  <h2>Reseñas</h2>
+
+  {/* Formulario nueva reseña */}
+  <div className={styles.reviewForm}>
+    <h3>Escribe una reseña</h3>
+  <form
+  onSubmit={async (e) => {
+    e.preventDefault();
+    if (!newReview.trim()) return;
+
+    try {
+      const res = await fetch(`${API}/api/reviews`, {  // <-- ruta CORRECTA
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem(`store:${storeId}:token`) || ""}`, // si aplica auth
+        },
+        body: JSON.stringify({
+          storeId,      
+          comment: newReview,
+          rating: Number(rating),
+        }),
+      });
+
+      if (!res.ok) throw new Error(`Error creando reseña: ${res.status}`);
+      const data = await res.json();
+
+      setReviews([data, ...reviews]);
+      setNewReview("");
+      setRating(5);
+    } catch (err) {
+      console.error("Error creando reseña:", err);
+    }
+  }}
+>
+
+      <label>Puntuación:</label>
+      <select value={rating} onChange={(e) => setRating(e.target.value)}>
+        <option value="5">⭐️⭐️⭐️⭐️⭐️</option>
+        <option value="4">⭐️⭐️⭐️⭐️</option>
+        <option value="3">⭐️⭐️⭐️</option>
+        <option value="2">⭐️⭐️</option>
+        <option value="1">⭐️</option>
+      </select>
+
+      <label>Comentario:</label>
+      <textarea
+        placeholder="Escribe tu reseña..."
+        value={newReview}
+        onChange={(e) => setNewReview(e.target.value)}
+      />
+
+      <button type="submit" className={styles.btnReview}>
+        Enviar reseña
+      </button>
+    </form>
+  </div>
+
+  {/* Listado de reseñas */}
+  <div className={styles.reviewsList}>
+    <h3>Reseñas recientes</h3>
+
+    {reviews.length === 0 && <p>No hay reseñas aún.</p>}
+
+    {reviews.map((r, i) => (
+      <div key={i} className={styles.reviewCard}>
+        <div className={styles.reviewHeader}>
+          <span className={styles.reviewRating}>
+            {"⭐".repeat(r.rating)}
+          </span>
+          <span className={styles.reviewDate}>
+            {new Date(r.createdAt).toLocaleDateString()}
+          </span>
+        </div>
+
+        <p className={styles.reviewComment}>{r.comment}</p>
+        <p className={styles.reviewUser}>Por: {r.userName || "Usuario"}</p>
+      </div>
+    ))}
+  </div>
+</section>
 
       <ChatWidget storeId={storeId} />
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import PublicNavBar from "../components/PublicNavBar";
-import styles from "../styles/publicStore.module.css";
+import "../styles/publicStore.css";
 import { getProductsPublic, getStorePublic } from "../api/storesApi";
 
 export default function StoreProducts() {
@@ -16,7 +16,7 @@ export default function StoreProducts() {
   const [categories, setCategories] = useState([]);
   const [debounceTimer, setDebounceTimer] = useState(null);
 
-  // Helper para obtener nombre de categoría soportando varios formatos
+  
   const getCategoryName = (p) => {
     if (!p) return "";
     // cuando backend incluye la relación: { category: { name: "..." } }
@@ -170,45 +170,45 @@ export default function StoreProducts() {
     setFilters(prev => ({ ...prev, ...changes }));
   }
 
-  if (loading) return <div className={styles.loader}>Cargando productos…</div>;
-  if (error) return <div className={styles.noProducts}>Error cargando productos: {error}</div>;
-  if (!products.length) return <div className={styles.noProducts}>No hay productos disponibles.</div>;
+  if (loading) return <div className="loader">Cargando productos…</div>;
+  if (error) return <div className="no-products">Error cargando productos: {error}</div>;
+  if (!products.length) return <div className="no-products">No hay productos disponibles.</div>;
 
   return (
-    <div className={styles.publicStore}>
+    <div className="public-store">
       <PublicNavBar storeId={storeId} storeName={store?.name} />
 
-      <div className={styles.filtersBar} style={{ maxWidth: 1200, margin: "18px auto 6px" }}>
-        <input className={styles.input} placeholder="Buscar productos..." value={filters.q} onChange={(e) => handleFilterChange({ q: e.target.value })} style={{ minWidth: 220 }} />
-        <select className={styles.input} value={filters.category} onChange={(e) => handleFilterChange({ category: e.target.value })}>
+      <div className="filters-bar" style={{ maxWidth: 1200, margin: "18px auto 6px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <input className="input" placeholder="Buscar productos..." value={filters.q} onChange={(e) => handleFilterChange({ q: e.target.value })} style={{ minWidth: 220 }} />
+        <select className="input" value={filters.category} onChange={(e) => handleFilterChange({ category: e.target.value })}>
           <option value="">Todas las categorías</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <input className={styles.input} type="number" placeholder="Precio min" value={filters.priceMin} onChange={(e) => handleFilterChange({ priceMin: e.target.value })} style={{ width: 110 }} />
-        <input className={styles.input} type="number" placeholder="Precio max" value={filters.priceMax} onChange={(e) => handleFilterChange({ priceMax: e.target.value })} style={{ width: 110 }} />
-        <select className={styles.input} value={filters.sort} onChange={(e) => handleFilterChange({ sort: e.target.value })} style={{ width: 160 }}>
+        <input className="input" type="number" placeholder="Precio min" value={filters.priceMin} onChange={(e) => handleFilterChange({ priceMin: e.target.value })} style={{ width: 110 }} />
+        <input className="input" type="number" placeholder="Precio max" value={filters.priceMax} onChange={(e) => handleFilterChange({ priceMax: e.target.value })} style={{ width: 110 }} />
+        <select className="input" value={filters.sort} onChange={(e) => handleFilterChange({ sort: e.target.value })} style={{ width: 160 }}>
           <option value="">Orden por</option>
-          <option value="newest">Más nuevos</option>
+          <option value="newest">Más nuevos</option>s
           <option value="price_asc">Precio: menor</option>
           <option value="price_desc">Precio: mayor</option>
         </select>
-        <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setFilters({ q: "", category: "", priceMin: "", priceMax: "", sort: "" })}>Limpiar</button>
+        <button className="btn btn-ghost" onClick={() => setFilters({ q: "", category: "", priceMin: "", priceMax: "", sort: "" })}>Limpiar</button>
       </div>
 
-      <div className={styles.productsSection} style={{ maxWidth: 1200, margin: "18px auto" }}>
+      <div className="products-section" style={{ maxWidth: 1200, margin: "18px auto" }}>
         <h2>Productos {store ? `— ${store.name}` : ""}</h2>
-        <div className={styles.productsGrid}>
+        <div className="products-grid">
           {products.map((p) => (
-            <article className={styles.productCard} key={p.id}>
-              <img className={styles.productImg} src={p.image || p.imageUrl || "/placeholder.png"} alt={p.name} />
-              <h3 className={styles.productTitle}>{p.name}</h3>
-              <div className={styles.productCategory}>{getCategoryName(p) || "Sin categoría"}</div>
-              <div className={styles.price}>{(p.price ?? 0).toFixed(2)} COP</div>
-              <p className={styles.desc}>{p.description}</p>
+            <article className="product-card" key={p.id}>
+              <img src={p.image || p.imageUrl || "/placeholder.png"} alt={p.name} />
+              <h3 className="product-title">{p.name}</h3>
+              <div className="product-category">{getCategoryName(p) || "Sin categoría"}</div>
+              <div className="price">{(p.price ?? 0).toFixed(2)} COP</div>
+              <p className="desc">{p.description}</p>
 
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <Link to={`/stores/${storeId}/products/${p.id}`} className={styles.btnOutline}>Ver</Link>
-                <button className={styles.btnAdd} onClick={() => addToCart(p)}>Agregar</button>
+                <Link to={`/stores/${storeId}/products/${p.id}`} className="btn-outline">Ver</Link>
+                <button className="btn-add" onClick={() => addToCart(p)}>Agregar</button>
               </div>
             </article>
           ))}
