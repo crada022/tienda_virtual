@@ -1,52 +1,55 @@
-import prisma from "../../config/db.js";
 
-export const getCartByUser = async (userId) => {
-  return await prisma.cart.findUnique({
-    where: { userId },
-    include: { items: { include: { product: true } } },
+export const getCartByCustomer = async (prisma, customerId) => {
+  return prisma.cart.findUnique({
+    where: { customerId },
+    include: {
+      items: { include: { product: true } }
+    }
   });
 };
 
-export const createCartIfNotExists = async (userId) => {
-  let cart = await prisma.cart.findUnique({ where: { userId } });
-
+/** Crear carrito si no existe */
+export const createCartIfNotExists = async (prisma, customerId) => {
+  let cart = await prisma.cart.findUnique({ where: { customerId } });
   if (!cart) {
-    cart = await prisma.cart.create({ data: { userId } });
+    cart = await prisma.cart.create({ data: { customerId } });
   }
-
   return cart;
 };
 
-export const addItemToCart = async (userId, productId, quantity = 1) => {
-  const cart = await createCartIfNotExists(userId);
+/** Agregar item al carrito */
+export const addItemToCart = async (prisma, customerId, productId, quantity = 1) => {
+  const cart = await createCartIfNotExists(prisma, customerId);
 
   const existingItem = await prisma.cartItem.findFirst({
-    where: { cartId: cart.id, productId },
+    where: { cartId: cart.id, productId }
   });
 
   if (existingItem) {
     return prisma.cartItem.update({
       where: { id: existingItem.id },
-      data: { quantity: existingItem.quantity + quantity },
+      data: { quantity: existingItem.quantity + quantity }
     });
   }
 
   return prisma.cartItem.create({
-    data: {
-      cartId: cart.id,
-      productId,
-      quantity,
-    },
+    data: { cartId: cart.id, productId, quantity }
   });
 };
 
-export const updateCartItem = async (itemId, quantity) => {
-  return prisma.cartItem.update({
-    where: { id: itemId },
-    data: { quantity },
-  });
+/** Actualizar cantidad de un item */
+export const updateCartItem = async (prisma, itemId, quantity) => {
+  return prisma.cartItem.update({ where: { id: itemId }, data: { quantity } });
 };
 
-export const removeCartItem = async (itemId) => {
+/** Eliminar item */
+export const removeCartItem = async (prisma, itemId) => {
   return prisma.cartItem.delete({ where: { id: itemId } });
+};
+
+/** Vaciar carrito de un customer */
+export const clearCustomerCart = async (prisma, customerId) => {
+  const cart = await prisma.cart.findUnique({ where: { customerId } });
+  if (!cart) return;
+  await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 };

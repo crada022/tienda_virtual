@@ -1,24 +1,50 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import Login from "../pages/Login";
-import StoresList from "../pages/StoresList";
-import CreateStore from "../pages/CreateStore";
-import ManageProducts from "../pages/ManageProducts";
-import { useAuth } from "../store/useAuth";
+// src/routes/admin.routes.js
+import express from "express";
+import { platformPrisma } from "../prisma/platform.js";
+import bcrypt from "bcryptjs";
 
-export default function AdminRouter() {
-  const { isAuthenticated } = useAuth();
+const router = express.Router();
 
-  return (
-    <Routes>
-      <Route path="/" element={<Login />} />
-      {isAuthenticated && (
-        <>
-          <Route path="/stores" element={<StoresList />} />
-          <Route path="/stores/create" element={<CreateStore />} />
-          <Route path="/stores/:id/products" element={<ManageProducts />} />
-        </>
-      )}
-      {!isAuthenticated && <Route path="*" element={<Navigate to="/" />} />}
-    </Routes>
-  );
-}
+// 1️⃣ Crear usuario ADMIN
+router.post("/create", async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email y password son requeridos" });
+    }
+
+    // Hash de password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await platformPrisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        role: "ADMIN", // <-- nuevo usuario siempre admin
+      },
+    });
+
+    res.status(201).json({ message: "Usuario creado como ADMIN", user: newUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error creando usuario" });
+  }
+});
+
+// 2️⃣ Convertir usuarios existentes a ADMIN
+router.post("/upgrade-all", async (req, res) => {
+  try {
+    const updated = await platformPrisma.user.updateMany({
+      data: { role: "ADMIN" },
+    });
+
+    res.status(200).json({ message: `Usuarios actualizados: ${updated.count}` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error actualizando usuarios" });
+  }
+});
+
+export default router;

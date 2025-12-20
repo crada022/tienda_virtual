@@ -8,12 +8,11 @@ import {
 
 const router = Router({ mergeParams: true }); // mergeParams para leer :storeId desde parent
 
-// Opcional: proteger rutas con middleware de autenticación si existe
-// import requireAuth from '../../middlewares/requireAuth.js';
+import { requireAuth } from "../../middleware/auth.js";
 
 router.get("/", getCategories);
-router.post("/", /* requireAuth, */ createCategory);
-router.put("/:categoryId", /* requireAuth, */ updateCategory);
-router.delete("/:categoryId", /* requireAuth, */ deleteCategory);
+router.post("/", requireAuth, createCategory);
+router.put("/:categoryId", requireAuth,  updateCategory);
+router.delete("/:categoryId",  requireAuth,  deleteCategory);
 
 export default router;

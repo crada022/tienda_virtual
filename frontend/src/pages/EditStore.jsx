@@ -1,177 +1,173 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import "./EditStore.css";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 
-export default function EditStore({ storeId, onSaved }) {
+export default function StoreEditor() {
+  const { storeId } = useParams();
+  const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("accessToken");
+
   const [store, setStore] = useState(null);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [logoFile, setLogoFile] = useState(null);
-  const [logoPreview, setLogoPreview] = useState("");
-  const [logoUrl, setLogoUrl] = useState(""); // para permitir URL directa
-  const [loading, setLoading] = useState(false); // para guardar
-  const [loadingFetch, setLoadingFetch] = useState(true); // nuevo: para cargar tienda
-  const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
 
-  // usar params como fallback si no llega storeId por props
-  const params = useParams();
-  const location = useLocation();
-  // intentar obtener id desde props, params o última parte de la URL como fallback (más robusto)
-  const routeId = params?.id;
-  const urlFallbackId = (() => {
-    try {
-      const parts = window.location.pathname.split("/").filter(Boolean);
-      const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-      const shortIdRegex = /^[0-9a-fA-F-]{4,}$/;
-      // Priorizar segmentos que coincidan con UUID o patrones numéricos/short-id
-      for (const p of parts) {
-        if (uuidRegex.test(p) || /^\d+$/.test(p) || shortIdRegex.test(p)) return p;
-      }
-      // Si la última parte es un verbo conocido ('edit','new','create'), tomar la anterior
-      const last = parts[parts.length - 1];
-      if (last && ["edit", "new", "create"].includes(last.toLowerCase())) {
-        return parts.length > 1 ? parts[parts.length - 2] : null;
-      }
-      // fallback simple: la última parte de la ruta
-      return parts.length ? parts[parts.length - 1] : null;
-    } catch (e) {
-      return null;
-    }
-  })();
-  const idToUse = storeId || routeId || urlFallbackId;
+  // 🎨 colores controlados
+  const [primaryColor, setPrimaryColor] = useState("#000000");
+  const [secondaryColor, setSecondaryColor] = useState("#ffffff");
 
-  // base API (leer VITE_API_BASE o fallback)
-  const apiBase = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || "http://localhost:4000";
-
-  // evitar que "edit" u otras palabras se usen como id
-  const effectiveId = (idToUse && typeof idToUse === "string" && ["edit", "new", "create"].includes(idToUse.toLowerCase()))
-    ? (() => {
-        const parts = window.location.pathname.split("/").filter(Boolean);
-        return parts.length > 1 ? parts[parts.length - 2] : null;
-      })()
-    : idToUse;
-
-  // mostrar error si no hay id
+  /* =========================
+     CARGAR TIENDA
+  ========================= */
   useEffect(() => {
-    if (!idToUse) {
-      setError("ID de tienda no disponible");
-      setLoadingFetch(false);
-    }
-  }, [idToUse]);
+    fetch(`${API}/api/stores/${storeId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => {
+        const theme = Array.isArray(data.colorTheme)
+          ? data.colorTheme
+          : typeof data.colorTheme === "string"
+            ? JSON.parse(data.colorTheme)
+            : [];
 
-  useEffect(() => {
-    if (!effectiveId) {
-      setError("ID de tienda no disponible");
-      setLoadingFetch(false);
+        setPrimaryColor(theme[0] || "#000000");
+        setSecondaryColor(theme[1] || "#ffffff");
+
+        setStore({
+          ...data,
+          colorTheme: theme
+        });
+      });
+  }, [storeId]);
+
+  function update(field, value) {
+    setStore(prev => ({ ...prev, [field]: value }));
+  }
+
+  /* =========================
+     CAMBIO DE COLORES (CLAVE)
+  ========================= */
+  function updatePrimary(color) {
+    setPrimaryColor(color);
+    setStore(prev => ({
+      ...prev,
+      colorTheme: [color, prev.colorTheme?.[1] || "#ffffff"]
+    }));
+  }
+
+  function updateSecondary(color) {
+    setSecondaryColor(color);
+    setStore(prev => ({
+      ...prev,
+      colorTheme: [prev.colorTheme?.[0] || "#000000", color]
+    }));
+  }
+
+  /* =========================
+     GUARDAR
+  ========================= */
+  async function save() {
+    setSaving(true);
+
+    const form = new FormData();
+    form.append("name", store.name);
+    form.append("description", store.description || "");
+    form.append("layoutType", store.layoutType || "grid");
+    form.append("style", store.style || "");
+    form.append("bannerUrl", store.bannerUrl || "");
+    form.append("colorTheme", JSON.stringify(store.colorTheme));
+
+    const res = await fetch(`${API}/api/stores/${storeId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: form
+    });
+
+    setSaving(false);
+
+    if (!res.ok) {
+      alert("❌ Error guardando tienda");
       return;
     }
-    setLoadingFetch(true);
-    setError(null);
-    // intentar obtener token en varias keys comunes
-    const token = localStorage.getItem("token") || localStorage.getItem("authToken") || localStorage.getItem("accessToken");
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const url = `${apiBase}/api/stores/${effectiveId}`;
-    console.debug("[EditStore] GET", url, headers ? "with token" : "no token");
-    axios.get(url, { headers })
-      .then(res => {
-        setStore(res.data);
-        setName(res.data.name || "");
-        setDescription(res.data.description || "");
-        setLogoPreview(res.data.logoUrl || "");
-        setLogoUrl(res.data.logoUrl || "");
-      })
-      .catch(err => {
-        console.error("[EditStore] error fetching store:", err?.response || err);
-        const message = err?.response?.data?.message || err?.response?.data || err.message || "Error desconocido";
-        setError(message);
-        setStore(null);
-      })
-      .finally(() => setLoadingFetch(false));
-  }, [idToUse]);
 
-  function handleFileChange(e) {
-    const f = e.target.files[0];
-    setLogoFile(f);
-    if (f) {
-      const url = URL.createObjectURL(f);
-      setLogoPreview(url);
-    }
+    alert("✅ Tienda actualizada");
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      const form = new FormData();
-      form.append("name", name);
-      form.append("description", description || "");
-      if (logoFile) {
-        form.append("logo", logoFile);
-      } else if (logoUrl) {
-        form.append("logoUrl", logoUrl);
-      }
-      const config = {
-        headers: {
-          "Content-Type": "multipart/form-data"
-        }
-      };
-      // incluir token si existe
-      const token = localStorage.getItem("token") || localStorage.getItem("authToken") || localStorage.getItem("accessToken");
-      if (token) config.headers.Authorization = `Bearer ${token}`;
-      const putUrl = `${apiBase}/api/stores/${effectiveId}`;
-      console.debug("[EditStore] PUT", putUrl);
-      const res = await axios.put(putUrl, form, config);
-      setStore(res.data);
-      if (onSaved) onSaved(res.data);
-      navigate(`/stores/${idToUse}/manage-products`); // redirige tras guardar
-    } catch (err) {
-      console.error("[EditStore] save error:", err?.response || err);
-      setError(err?.response?.data?.message || err.message || "Error guardando tienda");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (loadingFetch) return <div>Cargando tienda...</div>;
-  if (error && !store) return <div className="error">{typeof error === "string" ? error : JSON.stringify(error)}</div>;
+  if (!store) return <p>Cargando editor...</p>;
 
   return (
-    <div className="edit-store">
-      <h2>Editar tienda</h2>
-      {error && <div className="error">{typeof error === "string" ? error : JSON.stringify(error)}</div>}
-      <form onSubmit={handleSubmit} encType="multipart/form-data">
-        <div>
-          <label>Nombre</label>
-          <input value={name} onChange={e => setName(e.target.value)} required />
-        </div>
+    <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", height: "100vh" }}>
+      
+      {/* PANEL */}
+      <aside style={{ padding: 20, borderRight: "1px solid #ddd", overflowY: "auto" }}>
+        <h3>Editor visual</h3>
 
-        <div>
-          <label>Descripción</label>
-          <textarea className="textarea-white" value={description} onChange={e => setDescription(e.target.value)} />
-        </div>
+        <label>Nombre</label>
+        <input
+          value={store.name}
+          onChange={e => update("name", e.target.value)}
+        />
 
-        <div>
-          <label>Logo (subir archivo)</label>
-          <input type="file" accept="image/*" onChange={handleFileChange} />
-        </div>
+        <label>Descripción</label>
+        <textarea
+          value={store.description || ""}
+          onChange={e => update("description", e.target.value)}
+        />
 
-        <div>
-          <label>O usar URL de logo</label>
-          <input value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://..." />
-        </div>
+        <label>Color primario (botones)</label>
+        <input
+          type="color"
+          value={primaryColor}
+          onChange={e => updatePrimary(e.target.value)}
+        />
 
-        <div>
-          <label>Vista previa</label>
-          {logoPreview ? <img src={logoPreview} alt="preview" style={{ maxHeight: 120 }} /> : <div>No hay logo</div>}
-        </div>
+        <label>Color secundario</label>
+        <input
+          type="color"
+          value={secondaryColor}
+          onChange={e => updateSecondary(e.target.value)}
+        />
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Guardando..." : "Guardar cambios"}
+        <label>Layout</label>
+        <select
+          value={store.layoutType || "grid"}
+          onChange={e => update("layoutType", e.target.value)}
+        >
+          <option value="hero">Hero</option>
+          <option value="grid">Grid</option>
+          <option value="catalog">Catálogo</option>
+          <option value="minimal">Minimal</option>
+        </select>
+
+        <label>Banner (URL)</label>
+        <input
+          placeholder="https://res.cloudinary.com/..."
+          value={store.bannerUrl || ""}
+          onChange={e => update("bannerUrl", e.target.value)}
+        />
+
+        <label>CSS personalizado</label>
+        <textarea
+          rows={6}
+          placeholder=".btnAdd { border-radius: 16px; }"
+          value={store.style || ""}
+          onChange={e => update("style", e.target.value)}
+        />
+
+        <button onClick={save} disabled={saving}>
+          {saving ? "Guardando..." : "Guardar cambios"}
         </button>
-      </form>
+      </aside>
+
+      {/* PREVIEW */}
+      <iframe
+        key={JSON.stringify(store)}
+        src={`/stores/${storeId}`}
+        style={{ width: "100%", height: "100%", border: "none" }}
+      />
     </div>
   );
 }

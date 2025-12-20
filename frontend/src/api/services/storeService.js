@@ -78,3 +78,4 @@ export async function deleteStore(id) {
   const res = await api.delete(`/api/stores/${id}`);
   return res.data;
 }
+

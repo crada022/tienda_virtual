@@ -1,73 +1,118 @@
 import prisma from "../../config/db.js";
 import getPrismaClientForStore from "../../utils/database.js";
-import { registerCustomer, loginCustomer, verifyTenantToken } from "./tenantAuth.service.js";
+import {
+  registerCustomer,
+  loginCustomer,
+  verifyTenantToken
+} from "./tenantAuth.service.js";
 
+/**
+ * =======================
+ * REGISTER CUSTOMER
+ * =======================
+ */
 export async function postRegister(req, res) {
   try {
     const { storeId } = req.params;
     const { email, password, name } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: "Faltan campos: email y password requeridos" });
+      return res.status(400).json({ error: "Email y password son requeridos" });
     }
 
     const store = await prisma.store.findUnique({ where: { id: storeId } });
-    if (!store) return res.status(404).json({ error: "Tienda no encontrada" });
+    if (!store) {
+      return res.status(404).json({ error: "Tienda no encontrada" });
+    }
 
-    const result = await registerCustomer(store.dbName, { email, password, name });
-    return res.status(201).json(result);
+    const result = await registerCustomer(store.dbName, {
+      email: email.toLowerCase().trim(),
+      password,
+      name: name?.trim() || null
+    });
+
+    res.status(201).json(result);
   } catch (err) {
-    console.error("tenantAuth.postRegister error:", err);
-    const status = err.message && err.message.toLowerCase().includes("ya registrado") ? 400 : 500;
-    return res.status(status).json({ error: err.message });
+    console.error("[tenantAuth.postRegister]", err);
+    res.status(400).json({ error: err.message || "Error registrando cliente" });
   }
 }
 
+/**
+ * =======================
+ * LOGIN CUSTOMER
+ * =======================
+ */
 export async function postLogin(req, res) {
   try {
     const { storeId } = req.params;
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: "Faltan campos: email y password requeridos" });
+      return res.status(400).json({ error: "Email y password son requeridos" });
     }
 
     const store = await prisma.store.findUnique({ where: { id: storeId } });
-    if (!store) return res.status(404).json({ error: "Tienda no encontrada" });
+    if (!store) {
+      return res.status(404).json({ error: "Tienda no encontrada" });
+    }
 
-    const result = await loginCustomer(store.dbName, { email, password });
-    return res.json(result);
+    const result = await loginCustomer(store.dbName, {
+      email: email.toLowerCase().trim(),
+      password
+    });
+
+    res.json(result);
   } catch (err) {
-    console.error("tenantAuth.postLogin error:", err);
-    return res.status(400).json({ error: err.message });
+    console.error("[tenantAuth.postLogin]", err);
+    res.status(401).json({ error: err.message || "Credenciales inválidas" });
   }
 }
 
+/**
+ * =======================
+ * GET ME (CUSTOMER)
+ * =======================
+ */
 export async function getMe(req, res) {
   try {
-    const auth = req.headers.authorization?.split(" ")[1];
-    if (!auth) return res.status(401).json({ error: "No autorizado" });
-
-    const payload = verifyTenantToken(auth);
-    if (!payload) return res.status(401).json({ error: "Token inválido" });
-
-    if (!payload.store) return res.status(400).json({ error: "Token de tienda inválido" });
-
-    // usar el cliente prisma del tenant
-    const tenant = getPrismaClientForStore(payload.store);
-    if (!tenant) return res.status(500).json({ error: "No se pudo obtener conexión al tenant" });
-
-    try {
-      // asegurar que el modelo existe y traer customer
-      const customer = await tenant.customer.findUnique({ where: { id: payload.sub } });
-      if (!customer) return res.status(404).json({ error: "Cliente no encontrado" });
-      return res.json({ customer: { id: customer.id, email: customer.email, name: customer.name, createdAt: customer.createdAt } });
-    } catch (err) {
-      console.error("tenantAuth.getMe tenant DB error:", err);
-      return res.status(500).json({ error: "Error leyendo datos del tenant", detail: err.message });
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "No autorizado" });
     }
+
+    const token = authHeader.split(" ")[1];
+    const payload = verifyTenantToken(token);
+
+    // ✅ VALIDACIÓN CORRECTA
+    if (
+      !payload ||
+      payload.type !== "CUSTOMER" ||
+      !payload.sub ||
+      !payload.storeId
+    ) {
+      return res.status(401).json({ error: "Token inválido" });
+    }
+
+    const tenantDB = getPrismaClientForStore(payload.storeId);
+
+    const customer = await tenantDB.customer.findUnique({
+      where: { id: payload.sub },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true
+      }
+    });
+
+    if (!customer) {
+      return res.status(404).json({ error: "Cliente no encontrado" });
+    }
+
+    res.json({ customer });
   } catch (err) {
-    console.error("tenantAuth.getMe error:", err);
-    return res.status(500).json({ error: err.message });
+    console.error("[tenantAuth.getMe]", err);
+    res.status(500).json({ error: "Error obteniendo cliente" });
   }
 }

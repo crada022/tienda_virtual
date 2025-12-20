@@ -1,18 +1,12 @@
 .publicStore {
   --store-primary: #0a74ff;
   --store-accent: #00aa55;
-  --store-bg: #ffffff;
-  --store-text: #222222;
-  --store-muted: #666666;
-  --store-card: #ffffff;
-  --store-border: #eee;
-  font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: var(--store-text);
-  background: var(--store-bg);
-  width: 100%;
-  min-height: 100vh;
-  box-sizing: border-box;
+
+  --btn-bg: var(--store-primary);
+  --btn-text: #ffffff;
+  --btn-hover: var(--store-accent);
 }
+
 
 /* --- HERO --- */
 .storeHero {
@@ -54,22 +48,28 @@
 }
 
 .btnAdd {
-  display: inline-block;
+  background: var(--btn-bg);
+  color: var(--btn-text);
   padding: 10px 16px;
   border-radius: 8px;
-  background: linear-gradient(90deg, var(--store-primary), var(--store-accent));
-  color: #fff;
   text-decoration: none;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+.btnAdd:hover {
+  background: var(--btn-hover);
 }
 
 .btnOutline {
-  display: inline-block;
+  border: 2px solid var(--btn-bg);
+  color: var(--btn-bg);
+  background: transparent;
   padding: 10px 16px;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: transparent;
-  color: #fff;
-  text-decoration: none;
+}
+.btnOutline:hover {
+  background: var(--btn-bg);
+  color: white;
 }
 
 /* --- MODAL AUTENTICACIÓN --- */
@@ -173,16 +173,11 @@
 
 /* Burbuja de precio */
 .priceBubble {
-  position: absolute;
-  right: 14px;
-  top: 14px;
-  background: linear-gradient(135deg, var(--store-primary), var(--store-accent));
-  padding: 8px 14px;
-  color: white;
-  font-size: 0.95rem;
-  font-weight: 700;
-  border-radius: 50px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.16);
+  background: linear-gradient(
+    135deg,
+    var(--store-primary),
+    var(--store-accent)
+  );
 }
 
 /* Badge categoría */

@@ -7,7 +7,11 @@ export default function StoreCheckout() {
   const { storeId } = useParams();
   const navigate = useNavigate();
   const key = `store:${storeId}:cart`;
-  const token = localStorage.getItem(`store:${storeId}:token`) || localStorage.getItem("token") || localStorage.getItem("authToken") || localStorage.getItem("accessToken");
+ const token =
+  localStorage.getItem(`store:${storeId}:token`) ||
+  localStorage.getItem("token") ||
+  localStorage.getItem("authToken") ||
+  localStorage.getItem("accessToken");
   const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,6 +21,7 @@ export default function StoreCheckout() {
 
   // intentar prellenar datos del cliente tenant
   useEffect(() => {
+    
     async function loadCustomer() {
       if (!token) return;
       try {
@@ -30,54 +35,83 @@ export default function StoreCheckout() {
     loadCustomer();
   }, [storeId, token]);
 
-  async function submitOrder() {
-    if (!token) return alert("Necesitas iniciar sesión en esta tienda para comprar.");
-    if (!cart.length) return alert("Carrito vacío");
-    setLoading(true);
-    try {
-      // Crear la orden enviando los items con el precio actual desde el frontend
-      const payloadItems = cart.map(it => ({ productId: it.productId || it.id || it._id, quantity: it.quantity || 1, price: it.price || 0 }));
-      const orderRes = await fetch(`${API}/api/orders/create-from-items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ items: payloadItems })
-      });
-      if (!orderRes.ok) {
-        const errBody = await orderRes.json().catch(() => ({}));
-        throw new Error(errBody.message || "Error creando orden");
-      }
-      const order = await orderRes.json();
+ async function submitOrder() {
+  if (!token) return alert("Necesitas iniciar sesión en esta tienda para comprar.");
+  if (!cart.length) return alert("Carrito vacío");
+  setLoading(true);
 
-      // 3) solicitar sesión de Stripe para la orden y redirigir
-      try {
-        const sessRes = await fetch(`${API}/api/payments/stripe/create-session`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ orderId: order.id })
-        });
-        if (!sessRes.ok) {
-          const b = await sessRes.json().catch(()=>null);
-          console.error("create-session failed", b);
-          throw new Error(b?.error || "Error creando sesión de pago");
-        }
-        const data = await sessRes.json();
-        if (data.url) {
-          // limpiar carrito local antes de redirigir
-          localStorage.removeItem(key);
-          window.location.href = data.url;
-          return;
-        }
-      } catch (e) {
-        console.error("Stripe session creation error", e);
-      }
+  try {
+    // Preparar items para la orden
+    const payloadItems = cart.map(it => ({
+      productId: it.productId || it.id || it._id,
+      quantity: Number(it.quantity || 1),
+      price: Number(it.price || 0)
+    }));
 
-      // si no se redirige a Stripe, ir a cuenta
-      localStorage.removeItem(key);
-      navigate(`/stores/${storeId}/orders`);
-    } catch (err) {
-      alert(err.message || "Error procesando orden");
-    } finally { setLoading(false); }
+    // Crear orden en backend (customerId viene del JWT)
+    const orderRes = await fetch(`${API}/api/stores/${storeId}/orders/create-from-items`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-store-id": storeId
+      },
+      body: JSON.stringify({
+        items: payloadItems,
+        billing // opcional
+      })
+    });
+
+    if (!orderRes.ok) {
+      const errBody = await orderRes.json().catch(() => ({}));
+      throw new Error(errBody.message || "Error creando orden");
+    }
+
+    const order = await orderRes.json();
+
+    // Crear sesión de Stripe y redirigir
+const sessRes = await fetch(
+  `${API}/api/payments/stripe/create-session`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      "x-store-id": storeId
+    },
+    body: JSON.stringify({
+      orderId: order.id // 🔴 USAR EL ID REAL DE LA ORDEN
+    })
   }
+);
+
+if (!sessRes.ok) {
+  const b = await sessRes.json().catch(() => null);
+  throw new Error(b?.error || "Error creando sesión de pago");
+}
+
+const data = await sessRes.json();
+
+
+    if (data.url) {
+      // limpiar carrito antes de redirigir
+      localStorage.removeItem(key);
+      window.location.href = data.url;
+      return;
+    }
+
+    // si no redirige a Stripe, ir a la página de órdenes
+    localStorage.removeItem(key);
+    navigate(`/stores/${storeId}/orders`);
+
+  } catch (err) {
+    alert(err.message || "Error procesando orden");
+  } finally {
+    setLoading(false);
+  }
+}
+
+
 
   const total = cart.reduce((s,i)=>s + (i.price||0) * (i.quantity||1), 0);
 

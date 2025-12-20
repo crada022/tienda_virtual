@@ -4,9 +4,15 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "postinstall": "prisma generate",
+    "prisma:platform": "prisma migrate dev --schema=prisma/platform.prisma",
+    "prisma:tenant": "prisma migrate dev --schema=prisma/tenant.prisma",
+    "prisma:platform:generate": "prisma generate --schema=prisma/platform.prisma",
+    "prisma:tenant:generate": "prisma generate --schema=prisma/tenant.prisma"
   },
   "prisma": {
+    "schema": "prisma/platform.prisma",
     "seed": "node prisma/seed.js"
   },
   "dependencies": {

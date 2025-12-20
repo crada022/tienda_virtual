@@ -1,111 +1,163 @@
 import {
-  getCartByUser,
+  getCartByCustomer,
   addItemToCart,
   updateCartItem,
   removeCartItem,
+  clearCustomerCart
 } from "./cart.service.js";
-import prisma from "../../config/db.js";  // <--- ESTE FALTABA
 
+import { getTenantPrisma } from "../../prisma/tenant.js";
+
+/**
+ * Helper: obtener customerId y storeId del token
+ */
+function getTenantUser(req) {
+  const payload = req.userPayload || req.user;
+  return {
+    customerId: payload?.sub || payload?.id || null,
+    storeId: payload?.storeId || null
+  };
+}
+
+/**
+ * =========================
+ * GET /api/cart
+ * =========================
+ */
 export const getMyCart = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const cart = await getCartByUser(userId);
-    res.json(cart ?? { items: [] });
-  } catch (e) {
-    res.status(500).json({ message: "Error getting cart" });
+    const { customerId, storeId } = getTenantUser(req);
+
+    if (!customerId || !storeId) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+
+    const cart = await getCartByCustomer(storeId, customerId);
+    return res.json(cart ?? { items: [] });
+
+  } catch (error) {
+    console.error("[cart.getMyCart]", error);
+    return res.status(500).json({ message: "Error obteniendo carrito" });
   }
 };
 
+/**
+ * =========================
+ * POST /api/cart/items
+ * =========================
+ */
 export const addItem = async (req, res) => {
   try {
-    // normalizar userId: puede venir como string (token) o number
-    let userId = req.user?.id;
-    if (!userId && req.userPayload) userId = req.userPayload.id;
-    console.debug("[cart.addItem] raw userId:", userId, typeof userId);
-
-    if (typeof userId === "string") {
-      if (/^\d+$/.test(userId)) {
-        userId = Number(userId);
-      } else if (req.user?.email || req.userPayload?.email) {
-        const email = req.user?.email || req.userPayload?.email;
-        try {
-          const u = await prisma.user.findUnique({ where: { email } });
-          if (u) userId = u.id;
-        } catch (e) {
-          console.error("[cart.addItem] error finding user by email", e.message || e);
-        }
-      }
-    }
-
-    if (!userId || typeof userId !== "number") {
-      console.error("[cart.addItem] invalid userId after normalization", userId);
-      return res.status(400).json({ error: "Usuario inválido para operaciones de carrito" });
-    }
-
+    const { customerId, storeId } = getTenantUser(req);
     const { productId, quantity } = req.body;
-    const item = await addItemToCart(userId, productId, quantity);
-    res.json(item);
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({ message: "Error adding item" });
+
+    if (!customerId || !storeId) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+
+    if (!productId || quantity < 1) {
+      return res.status(400).json({ message: "Datos inválidos" });
+    }
+
+    const item = await addItemToCart(
+      storeId,
+      customerId,
+      productId,
+      quantity
+    );
+
+    return res.status(201).json(item);
+
+  } catch (error) {
+    console.error("[cart.addItem]", error);
+    return res.status(500).json({ message: "Error agregando producto" });
   }
 };
 
+/**
+ * =========================
+ * PUT /api/cart/items/:itemId
+ * =========================
+ */
 export const updateItem = async (req, res) => {
   try {
-    const { quantity } = req.body;
+    const { storeId } = getTenantUser(req);
     const itemId = Number(req.params.itemId);
+    const { quantity } = req.body;
 
-    const item = await updateCartItem(itemId, quantity);
-    res.json(item);
-  } catch (e) {
-    res.status(500).json({ message: "Error updating item" });
+    if (!storeId || !itemId || quantity < 1) {
+      return res.status(400).json({ message: "Datos inválidos" });
+    }
+
+    const item = await updateCartItem(storeId, itemId, quantity);
+    return res.json(item);
+
+  } catch (error) {
+    console.error("[cart.updateItem]", error);
+    return res.status(500).json({ message: "Error actualizando item" });
   }
 };
 
+/**
+ * =========================
+ * DELETE /api/cart/items/:itemId
+ * =========================
+ */
 export const removeItem = async (req, res) => {
   try {
+    const { storeId } = getTenantUser(req);
     const itemId = Number(req.params.itemId);
-    await removeCartItem(itemId);
-    res.json({ message: "Item removed" });
-  } catch (e) {
-    res.status(500).json({ message: "Error removing item" });
+
+    if (!storeId || !itemId) {
+      return res.status(400).json({ message: "Datos inválidos" });
+    }
+
+    await removeCartItem(storeId, itemId);
+    return res.json({ message: "Item eliminado" });
+
+  } catch (error) {
+    console.error("[cart.removeItem]", error);
+    return res.status(500).json({ message: "Error eliminando item" });
   }
 };
 
-export const updateQuantity = async (req, res) => {
-  try {
-    const { quantity } = req.body;
-    const { itemId } = req.params;
-
-    if (quantity < 1)
-      return res.status(400).json({ error: "Quantity must be at least 1" });
-
-    const item = await prisma.cartItem.update({
-      where: { id: Number(itemId) },
-      data: { quantity }
-    });
-
-    res.json({ message: "Quantity updated", item });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
+/**
+ * =========================
+ * DELETE /api/cart
+ * =========================
+ */
 export const clearCart = async (req, res) => {
   try {
-    const cart = await prisma.cart.findUnique({
-      where: { userId: req.user.id }
-    });
+    const { customerId, storeId } = getTenantUser(req);
 
-    if (!cart) return res.json({ message: "Cart already empty" });
+    if (!customerId || !storeId) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
 
-    await prisma.cartItem.deleteMany({
-      where: { cartId: cart.id }
-    });
+    await clearCustomerCart(storeId, customerId);
+    return res.json({ message: "Carrito vaciado" });
 
-    res.json({ message: "Cart cleared" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("[cart.clearCart]", error);
+    return res.status(500).json({ message: "Error limpiando carrito" });
+  }
+};
+// cart.controller.js
+export const updateQuantity = async (req, res) => {
+  try {
+    const { storeId } = getTenantUser(req);
+    const itemId = Number(req.params.itemId);
+    const { quantity } = req.body;
+
+    if (!storeId || !itemId || quantity < 1) {
+      return res.status(400).json({ message: "Datos inválidos" });
+    }
+
+    const item = await updateCartItem(storeId, itemId, quantity);
+    return res.json(item);
+
+  } catch (error) {
+    console.error("[cart.updateQuantity]", error);
+    return res.status(500).json({ message: "Error actualizando cantidad" });
   }
 };

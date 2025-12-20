@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/prisma/platform"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PLATFORM_DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role     @default(SELLER)
+  createdAt DateTime @default(now())
+
+  stores Store[]
+}
+
+model Store {
+  id        String   @id @default(uuid())
+  name      String
+  domain    String?
+  createdAt DateTime @default(now())
+  ownerId   Int
+  active    Boolean  @default(true)
+
+  address     String?
+  description String?
+  email       String?
+  phone       String?
+
+  bannerUrl  String?
+  colorTheme Json? 
+  layoutType String?
+  style      String?
+
+  dbName String   @unique
+  existe Boolean? @default(true)
+
+  owner       User         @relation(fields: [ownerId], references: [id])
+  aiTemplates AITemplate[] // <<--- Campo inverso agregado
+}
+
+model AITemplate {
+  id        Int      @id @default(autoincrement())
+  prompt    String
+  response  Json
+  createdAt DateTime @default(now())
+  storeId   String
+
+  store Store @relation(fields: [storeId], references: [id])
+}
+
+enum Role {
+  SELLER
+  ADMIN
+}

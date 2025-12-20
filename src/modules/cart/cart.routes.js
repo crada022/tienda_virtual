@@ -1,33 +1,28 @@
-import { Router } from "express";
-import { authMiddleware } from "../auth/auth.middleware.js";
+import express from "express";
+import { resolveTenant } from "../middleware/resolveTenant.js";
+import * as cartService from "./cart.service.js";
 
-import {
-  getMyCart,
-  addItem,
-  updateItem,
-  removeItem,
-  updateQuantity,
-  clearCart,
-} from "./cart.controller.js";
+const router = express.Router();
 
-const router = Router();
+router.get("/:customerId", resolveTenant, async (req, res) => {
+  try {
+    const cart = await cartService.getCartByCustomer(req.tenantPrisma, req.params.customerId);
+    res.json(cart);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al obtener carrito" });
+  }
+});
 
-// Obtener carrito del usuario
-router.get("/", authMiddleware, getMyCart);
-
-// Agregar item
-router.post("/", authMiddleware, addItem);
-
-// Actualizar solo cantidad (ruta más específica)
-router.put("/update/:itemId", authMiddleware, updateQuantity);
-
-// Actualizar item completo (ruta genérica)
-router.put("/:itemId", authMiddleware, updateItem);
-
-// Eliminar item
-router.delete("/:itemId", authMiddleware, removeItem);
-
-// Vaciar todo el carrito
-router.delete("/clear", authMiddleware, clearCart);
+router.post("/:customerId/add", resolveTenant, async (req, res) => {
+  const { productId, quantity } = req.body;
+  try {
+    const item = await cartService.addItemToCart(req.tenantPrisma, req.params.customerId, productId, quantity);
+    res.json(item);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al agregar item al carrito" });
+  }
+});
 
 export default router;

@@ -1,73 +1,128 @@
 // src/modules/ai/ai.service.js
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+const MODEL = process.env.OPENAI_MODEL || "gpt-4.1";
 
 /**
- * Genera una plantilla de tienda basada en el prompt/descripción.
- * Devuelve un objeto con: name, description, bannerUrl, colorTheme, layoutType, style, products[]
+ * Genera una plantilla de tienda basada en un prompt.
+ * Devuelve datos NORMALIZADOS y SEGUROS para backend.
  */
 export async function generateStoreTemplate(prompt) {
-  const instruct = `
-You are a storefront designer. Receive a user description and output STRICT JSON (no texto adicional).
-JSON schema:
+const instruction = `
+You are an expert ecommerce storefront designer.
+
+Your job is to design a UNIQUE visual identity for an online store
+based on the user's description.
+
+Return STRICT JSON only.
+NO explanations.
+NO markdown.
+NO comments.
+
+Each store design MUST feel different.
+Avoid generic or repeated designs.
+
+Schema:
 {
   "name": string,
   "description": string,
-  "bannerUrl": string | null,
-  "colorTheme": string | null,       // comma separated hex colors, e.g. "#0f172a,#f97316"
-  "layoutType": string,               // "hero" | "grid" | "catalog" | "minimal"
-  "style": string | null,             // optional CSS string or null
+
+  "colorTheme": string[], 
+  // array of 2 HEX colors: [primary, secondary]
+
+  "layoutType": "hero" | "grid" | "catalog" | "minimal",
+
+  "banner": {
+    "title": string,
+    "subtitle": string,
+    "imagePrompt": string
+  },
+
+  "style": string | null,
+
   "products": [
-    { "name": string, "description": string, "price": number, "imageUrl": string }
+    {
+      "name": string,
+      "description": string,
+      "price": number
+    }
   ]
 }
 
-User description:
-${prompt}
+Rules:
+- colorTheme must contain exactly 2 valid HEX colors
+- Choose colors creatively according to the store description
+- layoutType must match the business type
+- banner.imagePrompt must describe a realistic ecommerce hero image
+- Do NOT include URLs
+- Max 5 products
+- Prices must be realistic
+- The result must NOT feel generic or repeated
+- Prefer modern, clean and commercial designs
 
-IMPORTANT: Output STRICT JSON only (no explanations). If you cannot build a field, set it to null.
+User store description:
+${prompt}
 `;
 
+
   const response = await openai.responses.create({
-    model: "gpt-4.1",
-    input: instruct,
-    max_output_tokens: 1200,
-    temperature: 0 // reduce variabilidad para JSON consistente
+    model: MODEL,
+    input: instruction,
+    temperature: 0.7,
+    max_output_tokens: 1200
   });
 
-  const raw = response.output_text || response.output?.[0]?.content?.[0]?.text || "";
+  const raw =
+    response.output_text ||
+    response.output?.[0]?.content?.[0]?.text ||
+    "";
 
-  // Limpiar posibles ```json ... ``` o texto extra
-  const cleaned = raw.trim().replace(/^```json/, "").replace(/```$/, "");
+  /**
+   * Limpieza defensiva
+   */
+  const cleaned = raw
+    .trim()
+    .replace(/^```json/i, "")
+    .replace(/```$/i, "")
+    .replace(/\n/g, "")
+    .trim();
 
-  let data;
+  let parsed;
   try {
-    // Intentar parsear
-    const parsed = JSON.parse(cleaned);
-
-    // Normalizar campos
-    data = {
-      name: parsed.name || "Tienda generada",
-      description: parsed.description || "Descripción de tienda por defecto",
-      bannerUrl: parsed.bannerUrl || "https://via.placeholder.com/1200x400.png?text=Tienda",
-      colorTheme: parsed.colorTheme || "#0f172a,#f97316",
-      layoutType: ["hero", "grid", "catalog", "minimal"].includes(parsed.layoutType)
-        ? parsed.layoutType
-        : "grid",
-      style: parsed.style || null,
-      products: Array.isArray(parsed.products)
-        ? parsed.products.map(p => ({
-            name: p.name || "Producto",
-            description: p.description || "",
-            price: typeof p.price === "number" ? p.price : 0,
-            imageUrl: p.imageUrl || "https://via.placeholder.com/400x400.png?text=Producto"
-          }))
-        : []
-    };
-
-    return data;
+    parsed = JSON.parse(cleaned);
   } catch (err) {
-    throw new Error("Error parsing JSON from OpenAI: " + err.message + " — raw:" + raw.slice(0, 1000));
+    console.error("AI RAW RESPONSE:", raw);
+    throw new Error("Invalid JSON from AI");
   }
+
+  /**
+   * Normalización final (backend manda)
+   */
+  return {
+    name: parsed.name || "Tienda generada con IA",
+    description: parsed.description || "Descripción generada automáticamente",
+    bannerUrl: null, // backend decide
+    colorTheme: Array.isArray(parsed.colorTheme)
+      ? parsed.colorTheme.slice(0, 2)
+      : ["#0f172a", "#f97316"],
+    layoutType: ["hero", "grid", "catalog", "minimal"].includes(parsed.layoutType)
+      ? parsed.layoutType
+      : "grid",
+    style: typeof parsed.style === "string" ? parsed.style : null,
+    products: Array.isArray(parsed.products)
+      ? parsed.products.slice(0, 5).map(p => ({
+          name: p.name || "Producto",
+          description: p.description || "",
+          price: typeof p.price === "number" ? p.price : 0,
+          imageUrl: null,     // backend asigna
+          published: false    // 👈 MUY IMPORTANTE
+        }))
+      : []
+  };
 }
+

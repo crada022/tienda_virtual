@@ -112,14 +112,27 @@ export async function createCategory(storeId, name, description = "") {
       throw new Error("El nombre de la categoría es requerido");
     }
 
-    // Enviar explícitamente storeId para asegurar asociación si el backend lo requiere
+    const token = readTokenFromStorage();
+    if (!token) {
+      throw new Error("No hay token de autenticación");
+    }
+
     const body = {
       name: name.trim(),
       description: description || "",
       storeId,
     };
 
-    const response = await api.post(`/stores/${storeId}/categories`, body);
+    const response = await api.post(
+      `/stores/${storeId}/categories`,
+      body,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`, // 🔥 ESTA ERA LA LÍNEA QUE FALTABA
+        },
+      }
+    );
+
     return response.data.category || response.data;
   } catch (err) {
     const status = err?.response?.status;
@@ -129,11 +142,19 @@ export async function createCategory(storeId, name, description = "") {
     const enriched = new Error(`createCategory: ${message} (status: ${status})`);
     enriched.original = err;
     enriched.server = serverData;
-    enriched.request = err?.config && { url: err.config.url, method: err.config.method, data: err.config.data };
-    console.error("[createCategory] error:", enriched, "server:", serverData, "request:", enriched.request);
+    enriched.request =
+      err?.config && {
+        url: err.config.url,
+        method: err.config.method,
+        data: err.config.data,
+        headers: err.config.headers,
+      };
+
+    console.error("[createCategory] error:", enriched);
     throw enriched;
   }
 }
+
 
 // Eliminar categoría
 export async function deleteCategory(storeId, categoryId) {

@@ -1,9 +1,16 @@
 import prisma from "../../config/db.js"; // BD GLOBAL
 import getPrismaClientForStore from "../../utils/database.js";
 
-// Verificar si la tienda existe en la BD global
-const checkStore = async (storeId) => {
-  return prisma.store.findUnique({ where: { id: storeId } });
+
+const assertStoreAndOwner = async (storeId, userId) => {
+  const store = await prisma.store.findUnique({ where: { id: storeId } });
+
+  if (!store) throw { status: 404, message: "La tienda no existe" };
+  if (!store.active) throw { status: 403, message: "La tienda no está activa" };
+  if (store.ownerId !== userId)
+    throw { status: 403, message: "No tienes permiso para administrar esta tienda" };
+
+  return store;
 };
 
 // =============================
@@ -13,20 +20,20 @@ export const getProducts = async (req, res) => {
   const { storeId } = req.params;
 
   try {
-    const store = await checkStore(storeId);
-    if (!store) return res.status(404).json({ error: "La tienda no existe" });
+    const store = await prisma.store.findUnique({ where: { id: storeId } });
+    if (!store || !store.active)
+      return res.status(404).json({ error: "La tienda no existe o está inactiva" });
 
-    // conectar al tenant DB
     const tenantDB = getPrismaClientForStore(store.dbName);
 
     const products = await tenantDB.product.findMany({
-      include: { category: true }, // incluir categoría
+      include: { category: true },
     });
 
     res.json(products);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Error al obtener productos", detail: err.message });
+    res.status(500).json({ error: "Error al obtener productos" });
   }
 };
 
@@ -37,14 +44,15 @@ export const getProduct = async (req, res) => {
   const { storeId, productId } = req.params;
 
   try {
-    const store = await checkStore(storeId);
-    if (!store) return res.status(404).json({ error: "La tienda no existe" });
+    const store = await prisma.store.findUnique({ where: { id: storeId } });
+    if (!store || !store.active)
+      return res.status(404).json({ error: "La tienda no existe o está inactiva" });
 
     const tenantDB = getPrismaClientForStore(store.dbName);
 
     const product = await tenantDB.product.findUnique({
       where: { id: Number(productId) },
-      include: { category: true }, // incluir categoría
+      include: { category: true },
     });
 
     if (!product)
@@ -53,7 +61,7 @@ export const getProduct = async (req, res) => {
     res.json(product);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Error al obtener producto", detail: err.message });
+    res.status(500).json({ error: "Error al obtener producto" });
   }
 };
 
@@ -63,57 +71,45 @@ export const getProduct = async (req, res) => {
 export const createProduct = async (req, res) => {
   const { storeId } = req.params;
   const { name, description, price, stock, image, categoryId } = req.body;
-  console.log("USER AUTH:", req.user);  // <---- DEBUG
-
-  const userId = req.user?.id;  // <-- viene del middleware requireAuth
+  const userId = req.user?.id;
 
   try {
-    if (!userId) {
+    if (!userId)
       return res.status(401).json({ error: "No autenticado" });
-    }
 
-    const store = await checkStore(storeId);
-    if (!store) return res.status(404).json({ error: "La tienda no existe" });
+    if (!name || isNaN(Number(price)))
+      return res.status(400).json({ error: "Nombre y precio válidos son requeridos" });
 
-    // 🔥 RESTRICCIÓN IMPORTANTE
-    if (store.ownerId !== userId) {
-      return res.status(403).json({ error: "No tienes permiso para administrar esta tienda" });
-    }
-
-    if (!name || !price) {
-      return res.status(400).json({ error: "nombre y precio requeridos" });
-    }
-
+    const store = await assertStoreAndOwner(storeId, userId);
     const tenantDB = getPrismaClientForStore(store.dbName);
 
-    // validar que la categoría existe (si se proporciona)
     if (categoryId) {
-      const category = await tenantDB.category.findUnique({
-        where: { id: categoryId },
+      const category = await tenantDB.category.findFirst({
+        where: { id: categoryId, storeId },
       });
-      if (!category) {
+      if (!category)
         return res.status(404).json({ error: "Categoría no encontrada" });
-      }
     }
 
-    const newProduct = await tenantDB.product.create({
+    const product = await tenantDB.product.create({
       data: {
         name: name.trim(),
         description: description?.trim() || null,
         price: Number(price),
         stock: Number(stock) || 0,
         image: image?.trim() || null,
-        categoryId: categoryId || null, // relacionar con categoría
+        categoryId: categoryId || null,
+        storeId,
       },
       include: { category: true },
     });
 
-    res.status(201).json(newProduct);
+    res.status(201).json(product);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al crear producto", detail: err.message });
+    res.status(err.status || 500).json({ error: err.message });
   }
 };
+
 
 // =============================
 // Actualizar producto
@@ -124,46 +120,50 @@ export const updateProduct = async (req, res) => {
   const userId = req.user?.id;
 
   try {
-    if (!userId) {
+    if (!userId)
       return res.status(401).json({ error: "No autenticado" });
-    }
 
-    const store = await checkStore(storeId);
-    if (!store) return res.status(404).json({ error: "La tienda no existe" });
-
-    if (store.ownerId !== userId) {
-      return res.status(403).json({ error: "No tienes permiso para administrar esta tienda" });
-    }
-
+    const store = await assertStoreAndOwner(storeId, userId);
     const tenantDB = getPrismaClientForStore(store.dbName);
 
-    // validar que la categoría existe (si se proporciona)
-    if (categoryId) {
-      const category = await tenantDB.category.findUnique({
-        where: { id: categoryId },
-      });
-      if (!category) {
-        return res.status(404).json({ error: "Categoría no encontrada" });
+    const data = {};
+
+    if (name !== undefined) data.name = name.trim();
+    if (description !== undefined) data.description = description?.trim() || null;
+
+    if (price !== undefined) {
+      if (isNaN(Number(price)))
+        return res.status(400).json({ error: "Precio inválido" });
+      data.price = Number(price);
+    }
+
+    if (stock !== undefined) data.stock = Number(stock);
+    if (image !== undefined) data.image = image?.trim() || null;
+
+    if (categoryId !== undefined) {
+      if (categoryId) {
+        const category = await tenantDB.category.findUnique({
+          where: { id: categoryId },
+        });
+        if (!category)
+          return res.status(404).json({ error: "Categoría no encontrada" });
+        data.categoryId = categoryId;
+      } else {
+        data.categoryId = null;
       }
     }
 
-    const updated = await tenantDB.product.update({
+    const product = await tenantDB.product.update({
       where: { id: Number(productId) },
-      data: {
-        name: name?.trim(),
-        description: description?.trim() || null,
-        price: Number(price),
-        stock: Number(stock),
-        image: image?.trim(),
-        categoryId: categoryId || null,
-      },
+      data,
       include: { category: true },
     });
 
-    res.json(updated);
+    res.json(product);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al actualizar producto", detail: err.message });
+    res.status(err.status || 500).json({
+      error: err.message || "Error actualizando producto",
+    });
   }
 };
 
@@ -175,26 +175,27 @@ export const deleteProduct = async (req, res) => {
   const userId = req.user?.id;
 
   try {
-    if (!userId) {
+    if (!userId)
       return res.status(401).json({ error: "No autenticado" });
-    }
 
-    const store = await checkStore(storeId);
-    if (!store) return res.status(404).json({ error: "La tienda no existe" });
-
-    if (store.ownerId !== userId) {
-      return res.status(403).json({ error: "No tienes permiso para administrar esta tienda" });
-    }
-
+    const store = await assertStoreAndOwner(storeId, userId);
     const tenantDB = getPrismaClientForStore(store.dbName);
+
+    const exists = await tenantDB.product.findUnique({
+      where: { id: Number(productId) },
+    });
+
+    if (!exists)
+      return res.status(404).json({ error: "Producto no encontrado" });
 
     await tenantDB.product.delete({
       where: { id: Number(productId) },
     });
 
-    res.status(204).send();
+    res.json({ message: "Producto eliminado correctamente" });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al eliminar producto", detail: err.message });
+    res.status(err.status || 500).json({
+      error: err.message || "Error eliminando producto",
+    });
   }
 };

@@ -5,6 +5,11 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: 'localhost',  // importante para HMR
+    port: 5173,
+    hmr: {
+      host: 'localhost',
+    },
     proxy: {
       "/api": {
         target: "http://localhost:4000",

@@ -1,9 +1,19 @@
-import prisma from "../../config/db.js";
+/**
+ * =========================
+ * CREAR ORDEN DESDE CARRITO
+ * =========================
+ */
+export const createOrderFromCart = async (req, customerId) => {
+  const prisma = req.tenantPrisma;
+  if (!prisma) throw new Error("Tenant prisma not resolved");
 
-export const createOrderFromCart = async (userId) => {
   const cart = await prisma.cart.findUnique({
-    where: { userId },
-    include: { items: { include: { product: true } } },
+    where: { customerId },
+    include: {
+      items: {
+        include: { product: true }
+      }
+    }
   });
 
   if (!cart || cart.items.length === 0) {
@@ -15,63 +25,127 @@ export const createOrderFromCart = async (userId) => {
     0
   );
 
-  return await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     const order = await tx.order.create({
       data: {
-        userId,
+        customerId,
         total,
+        status: "PENDING",
         items: {
-          create: cart.items.map((item) => ({
+          create: cart.items.map(item => ({
             productId: item.productId,
             quantity: item.quantity,
-            price: item.product.price,
-          })),
-        },
+            price: item.product.price
+          }))
+        }
       },
-      include: { items: true },
+      include: {
+        items: { include: { product: true } }
+      }
     });
 
+    // Vaciar carrito
     await tx.cartItem.deleteMany({
-      where: { cartId: cart.id },
+      where: { cartId: cart.id }
     });
 
     return order;
   });
 };
 
-export const getOrdersByUser = async (userId) => {
+/**
+ * =========================
+ * LISTAR ÓRDENES DEL CUSTOMER
+ * =========================
+ */
+export const getOrdersByCustomer = async (req, customerId) => {
+  const prisma = req.tenantPrisma;
+  if (!prisma) throw new Error("Tenant prisma not resolved");
+
   return prisma.order.findMany({
-    where: { userId },
-    include: { items: { include: { product: true } } },
+    where: { customerId },
+    include: {
+      items: { include: { product: true } }
+    },
     orderBy: { createdAt: "desc" }
   });
 };
 
-export const getOrderById = async (orderId, userId) => {
+/**
+ * =========================
+ * OBTENER ORDEN POR ID
+ * =========================
+ */
+export const getOrderById = async (req, orderId, customerId) => {
+  const prisma = req.tenantPrisma;
+  if (!prisma) throw new Error("Tenant prisma not resolved");
+
   return prisma.order.findFirst({
-    where: { id: orderId, userId },
-    include: { items: { include: { product: true } } },
+    where: {
+      id: Number(orderId),
+      customerId
+    },
+    include: {
+      items: { include: { product: true } }
+    }
   });
 };
 
-export const createOrderFromItems = async (userId, items) => {
-  // items: [{ productId, quantity, price }]
-  if (!items || !items.length) throw new Error("No items provided");
+/**
+ * =========================
+ * CREAR ORDEN DESDE ITEMS
+ * =========================
+ * Checkout rápido / Buy now
+ */
+export const createOrderFromItems = async (req, customerId, items) => {
+  const prisma = req.tenantPrisma;
+  if (!prisma) throw new Error("Tenant prisma not resolved");
 
-  const total = items.reduce((s, it) => s + (Number(it.price || 0) * Number(it.quantity || 1)), 0);
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error("No items provided");
+  }
 
-  return await prisma.$transaction(async (tx) => {
+  const total = items.reduce(
+    (sum, it) =>
+      sum +
+      Number(it.price || 0) * Number(it.quantity || 1),
+    0
+  );
+
+  return prisma.$transaction(async (tx) => {
     const order = await tx.order.create({
       data: {
-        userId,
+        customerId,
         total,
+        status: "PENDING",
         items: {
-          create: items.map(it => ({ productId: it.productId, quantity: it.quantity, price: it.price }))
+          create: items.map(it => ({
+            productId: it.productId,
+            quantity: Number(it.quantity || 1),
+            price: Number(it.price || 0)
+          }))
         }
       },
-      include: { items: true }
+      include: {
+        items: { include: { product: true } }
+      }
     });
 
     return order;
+  });
+};
+
+/**
+ * =========================
+ * ACTUALIZAR ESTADO (ADMIN TIENDA)
+ * =========================
+ */
+export const updateOrderStatusByStore = async (req, orderId, status) => {
+  const prisma = req.tenantPrisma;
+  if (!prisma) throw new Error("Tenant prisma not resolved");
+
+  return prisma.order.update({
+    where: { id: Number(orderId) },
+    data: { status }
   });
 };

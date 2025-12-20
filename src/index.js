@@ -15,39 +15,27 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import paymentsRoutes from "./modules/payments/stripe.routes.js";
 import * as stripeController from "./modules/payments/stripe.controller.js";
 import categoriesRoutes from "./modules/categories/categories.routes.js";
+import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
+import { resolveTenant } from './modules/middleware/resolveTenant.js';
 
-// ...existing middleware...
-
-// Rutas
-
-// ...existing routes...
 dotenv.config();
 
 const app = express();
 
-// CORS: permitir Authorization en preflight
 app.use(cors({
   origin: true,
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-store-id", "x-store-domain"],
   methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
 }));
 
-// log masked JWT_SECRET para verificar que exista y coincida
-const masked = process.env.JWT_SECRET ? `${process.env.JWT_SECRET.slice(0,4)}...${process.env.JWT_SECRET.slice(-4)}` : "<no-secret>";
 
+const masked = process.env.JWT_SECRET ? `${process.env.JWT_SECRET.slice(0,4)}...${process.env.JWT_SECRET.slice(-4)}` : "<no-secret>";
+app.use("/api/dashboard", dashboardRoutes);
 
 // ⬇️ PRIMERO el parser de JSON
 app.use(express.json());
-
-// Stripe webhook raw parser (signature validation needs raw body)
 app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), stripeController.webhook);
-
-// ⬇️ DESPUÉS cualquier middleware que use req.body
-app.use((req, res, next) => {
-  console.log("Middleware global BODY:", req.body);
-  next();
-});
 
 // Rutas
 app.use("/api/auth", authRoutes);
@@ -56,7 +44,7 @@ app.use("/api/stores/:storeId/categories", categoriesRoutes);
 app.use("/api", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/orders", orderRoutes);
+app.use("/api/stores/:storeId/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/stores", storeRoutes);
 app.get("/", (req, res) => res.send("tutiendavirtual backend OK"));

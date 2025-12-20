@@ -1,3 +1,4 @@
+import "./styles/publicStore.css";
 import { useAuth } from "./store/useAuth";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import CreateStore from "./pages/CreateStore";

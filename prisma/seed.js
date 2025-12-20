@@ -1,38 +1,42 @@
-import pkg from "@prisma/client";
+import { PrismaClient } from "../src/prisma/platform/index.js";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 
 dotenv.config();
-const { PrismaClient } = pkg;
-const prisma = new PrismaClient();
+
+const platformPrisma = new PrismaClient();
 
 async function main() {
   const email = process.env.ADMIN_EMAIL || "admin@tutienda.com";
   const password = process.env.ADMIN_PASSWORD || "admin123";
   const hashed = await bcrypt.hash(password, 10);
 
-  const exists = await prisma.user.findUnique({ where: { email } });
+  const exists = await platformPrisma.user.findUnique({
+    where: { email },
+  });
+
   if (exists) {
-    console.log("Admin already exists:", email);
+    console.log("✅ Admin already exists:", email);
     return;
   }
 
-  const user = await prisma.user.create({
+  const user = await platformPrisma.user.create({
     data: {
       email,
       password: hashed,
       role: "ADMIN",
-      name: "Admin"
+      name: "Admin",
     },
   });
-  console.log("Created admin:", user.email);
+
+  console.log("✅ Created admin:", user.email);
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ Seed error:", e);
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await platformPrisma.$disconnect();
   });
