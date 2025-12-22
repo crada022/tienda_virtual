@@ -16,11 +16,11 @@ export const createOrder = async (req, res) => {
     const customerId = req.customer.id;
 
     const order = await createOrderFromCart(
-      req,               // 🔥 pasar req
+      req,
       customerId
     );
 
-    return res.json(order);
+    return res.status(201).json(order);
   } catch (err) {
     return res.status(400).json({ message: err.message });
   }
@@ -30,21 +30,21 @@ export const createOrder = async (req, res) => {
  * =========================
  * CREAR ORDEN DESDE ITEMS
  * =========================
+ * Checkout rápido / Buy now
  */
 export const createOrderFromItemsController = async (req, res) => {
   try {
-    const { items, billing } = req.body;
+    const { items } = req.body;
     const customerId = req.customer.id;
 
-    if (!Array.isArray(items) || !items.length) {
+    if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "Items are required" });
     }
 
     const order = await createOrderFromItems(
-      req,          // 🔥 CLAVE
+      req,          // 🔥 tenantPrisma vive aquí
       customerId,
-      items,
-      billing
+      items
     );
 
     return res.status(201).json(order);
@@ -64,7 +64,7 @@ export const listMyOrders = async (req, res) => {
     const customerId = req.customer.id;
 
     const orders = await getOrdersByCustomer(
-      req,           // 🔥 pasar req
+      req,
       customerId
     );
 
@@ -85,7 +85,7 @@ export const getOrder = async (req, res) => {
     const orderId = Number(req.params.id);
 
     const order = await getOrderById(
-      req,           // 🔥 pasar req
+      req,
       orderId,
       customerId
     );
@@ -102,7 +102,7 @@ export const getOrder = async (req, res) => {
 
 /**
  * =========================
- * ACTUALIZAR ESTADO (ADMIN)
+ * ACTUALIZAR ESTADO (ADMIN TIENDA)
  * =========================
  */
 export const updateOrderStatus = async (req, res) => {
@@ -111,7 +111,7 @@ export const updateOrderStatus = async (req, res) => {
     const orderId = Number(req.params.id);
 
     const order = await updateOrderStatusByStore(
-      req.store.id,   // 🔥 store real
+      req,        // 🔥 pasar req para tenantPrisma
       orderId,
       status
     );
@@ -119,6 +119,6 @@ export const updateOrderStatus = async (req, res) => {
     return res.json(order);
   } catch (err) {
     console.error("[order.updateOrderStatus]", err);
-    return res.status(400).json({ message: "Error updating order status" });
+    return res.status(400).json({ message: err.message });
   }
 };

@@ -1,6 +1,7 @@
 // src/config/db.js
 import dotenv from "dotenv";
 import { PrismaClient as PlatformPrismaClient } from "../prisma/platform/index.js";
+import { PrismaClient as TenantPrismaClient } from "../prisma/tenant/index.js";
 
 dotenv.config();
 
@@ -22,7 +23,7 @@ export function createTenantPrisma(dbName) {
   const url = `${process.env.TENANT_DB_PREFIX}${dbName}`;
   console.log("[Tenant Prisma URL]", url);
 
-  return new PlatformPrismaClient({
+  return new TenantPrismaClient({
     datasources: {
       db: { url }
     }

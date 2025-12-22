@@ -105,13 +105,24 @@ export const createOrderFromItems = async (req, customerId, items) => {
     throw new Error("No items provided");
   }
 
-  const total = items.reduce(
-    (sum, it) =>
-      sum +
-      Number(it.price || 0) * Number(it.quantity || 1),
-    0
-  );
+  // 1️⃣ Obtener productos reales desde DB
+  const products = await prisma.product.findMany({
+    where: {
+      id: { in: items.map(i => i.productId) }
+    }
+  });
 
+  if (products.length !== items.length) {
+    throw new Error("Some products not found");
+  }
+
+  // 2️⃣ Calcular total REAL
+  const total = items.reduce((sum, it) => {
+    const product = products.find(p => p.id === it.productId);
+    return sum + product.price * Number(it.quantity || 1);
+  }, 0);
+
+  // 3️⃣ Crear orden
   return prisma.$transaction(async (tx) => {
     const order = await tx.order.create({
       data: {
@@ -119,11 +130,14 @@ export const createOrderFromItems = async (req, customerId, items) => {
         total,
         status: "PENDING",
         items: {
-          create: items.map(it => ({
-            productId: it.productId,
-            quantity: Number(it.quantity || 1),
-            price: Number(it.price || 0)
-          }))
+          create: items.map(it => {
+            const product = products.find(p => p.id === it.productId);
+            return {
+              productId: it.productId,
+              quantity: Number(it.quantity || 1),
+              price: product.price
+            };
+          })
         }
       },
       include: {
@@ -134,6 +148,7 @@ export const createOrderFromItems = async (req, customerId, items) => {
     return order;
   });
 };
+
 
 /**
  * =========================

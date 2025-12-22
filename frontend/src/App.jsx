@@ -24,6 +24,9 @@ import ForgotPassword from "./pages/ForgotPassword";
 import PublicReviews from "./pages/PublicReviews";
 import StoreReviews from "./pages/StoreReviews";
 import StoreAuthModal from "./components/StoreAuthModal";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
+import CheckoutCancel from "./pages/CheckoutCancel";
+import Index from "./pages/index";
 
 function ProtectedLayout() {
   const { token } = useAuth();
@@ -45,6 +48,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+       <Route path="/" element={<Index />} />
   {/* Auth */}
   <Route path="/login" element={<Login />} />
   <Route path="/register" element={<Register />} />
@@ -61,6 +65,8 @@ function App() {
     <Route path="/store/:slug/reviews" element={<StoreReviews />} />
     <Route path="/store/:slug/account" element={<StoreProfile />} />
     <Route path="/store/:slug/orders" element={<StoreOrders />} />
+    <Route path="/store/:slug/checkout/success" element={<CheckoutSuccess />} />
+    <Route path="/store/:slug/checkout/cancel" element={<CheckoutCancel />} />   
   
   {/* Layout protegido */}
   <Route element={<ProtectedLayout />}>

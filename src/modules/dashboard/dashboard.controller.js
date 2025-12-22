@@ -1,10 +1,6 @@
 import { platformPrisma } from "../../config/db.js";
 import { getPrismaClientForStore } from "../../utils/database.js";
 
-/**
- * GET /api/dashboard/stats
- * Devuelve estadísticas generales para el usuario loggeado
- */
 export async function getDashboardStats(req, res) {
   try {
     const user = req.user || req.userPayload;
@@ -15,7 +11,7 @@ export async function getDashboardStats(req, res) {
 
     const userId = user.sub || user.id;
 
-    // 1️⃣ Obtener tiendas del usuario
+    // 1️⃣ Tiendas del usuario (PLATFORM DB)
     const stores = await platformPrisma.store.findMany({
       where: { ownerId: userId }
     });
@@ -33,28 +29,45 @@ export async function getDashboardStats(req, res) {
       1
     );
 
-    // 2️⃣ Recorrer tiendas (TENANT)
+    // 2️⃣ Recorrer tiendas TENANT
     for (const store of stores) {
       if (!store.dbName) continue;
 
-      const tenantDB = await getPrismaClientForStore(store.id);
+      let tenantDB;
 
-      // Ventas totales
-      const total = await tenantDB.sale.aggregate({
-        _sum: { total: true }
-      });
+      try {
+        // ✅ usar dbName, NO store.id
+        tenantDB = await getPrismaClientForStore(store.dbName);
 
-      totalSales += total._sum.total || 0;
+        // Ventas totales
+        const total = await tenantDB.sale.aggregate({
+          _sum: { total: true }
+        });
 
-      // Ventas del mes actual
-      const monthly = await tenantDB.sale.aggregate({
-        _sum: { total: true },
-        where: {
-          createdAt: { gte: firstDayOfMonth }
+        totalSales += total._sum.total || 0;
+
+        // Ventas del mes
+        const monthly = await tenantDB.sale.aggregate({
+          _sum: { total: true },
+          where: {
+            createdAt: { gte: firstDayOfMonth }
+          }
+        });
+
+        monthlySales += monthly._sum.total || 0;
+
+      } catch (tenantErr) {
+        console.error(
+          `[DashboardStats] Error en tienda ${store.slug || store.id}`,
+          tenantErr
+        );
+        // ⛔ NO romper el dashboard por una tienda
+        continue;
+      } finally {
+        if (tenantDB) {
+          await tenantDB.$disconnect();
         }
-      });
-
-      monthlySales += monthly._sum.total || 0;
+      }
     }
 
     const monthlyGrowth =
@@ -71,7 +84,9 @@ export async function getDashboardStats(req, res) {
     });
 
   } catch (err) {
-    console.error("[getDashboardStats]", err);
-    return res.status(500).json({ error: "Error obteniendo estadísticas" });
+    console.error("[getDashboardStats] FATAL", err);
+    return res.status(500).json({
+      error: "Error obteniendo estadísticas"
+    });
   }
 }

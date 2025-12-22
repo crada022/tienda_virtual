@@ -2,6 +2,11 @@ import { platformPrisma } from "../../config/db.js";
 
 export async function resolveStore(req, res, next) {
   try {
+    console.log("🔎 resolveStore URL:", req.originalUrl);
+console.log("🔎 params:", req.params);
+    console.log("HOST:", req.headers.host);
+console.log("SLUG:", req.params?.slug);
+console.log("STOREID:", req.params?.storeId);
     let store = null;
 
     // 1️⃣ Por dominio (producción)
@@ -30,11 +35,27 @@ export async function resolveStore(req, res, next) {
       return res.status(404).json({ error: "Tienda no encontrada" });
     }
 
-    // 🔥 inyectar tienda en request
-    req.store = store;
+    /**
+     * 🔥 NORMALIZAR STORE PARA TENANT
+     * No pasar el modelo crudo
+     */
+    req.store = {
+      id: store.id,
+      name: store.name,
+      slug: store.slug,
+      domain: store.domain,
+      dbName: store.dbName, // 🔑 CLAVE ABSOLUTA
+      // opcional: dbUrl si lo tienes
+      // dbUrl: store.dbUrl
+    };
+
+    if (!req.store.dbName) {
+      throw new Error("Store dbName is missing");
+    }
+
     next();
   } catch (err) {
     console.error("[resolveStore]", err);
-    return res.status(500).json({ error: "Error resolviendo tienda" });
+    return res.status(500).json({ error: err.message });
   }
 }

@@ -1,0 +1,90 @@
+.landing {
+  font-family: system-ui, sans-serif;
+  color: #111;
+}
+
+.hero {
+  padding: 80px 20px;
+  text-align: center;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: white;
+}
+
+.hero h1 {
+  font-size: 42px;
+  margin-bottom: 16px;
+}
+
+.hero p {
+  font-size: 18px;
+  max-width: 600px;
+  margin: 0 auto 24px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+
+.btn-primary {
+  background: #6366f1;
+  color: white;
+  padding: 12px 22px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.btn-secondary {
+  border: 1px solid white;
+  color: white;
+  padding: 12px 22px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.features {
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.features-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-top: 30px;
+}
+
+.feature-card {
+  background: #f8fafc;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.for-who {
+  padding: 60px 20px;
+  background: #f1f5f9;
+  text-align: center;
+}
+
+.for-who ul {
+  list-style: none;
+  padding: 0;
+}
+
+.for-who li {
+  margin: 10px 0;
+  font-size: 16px;
+}
+
+.cta {
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.footer {
+  padding: 20px;
+  text-align: center;
+  color: #64748b;
+}

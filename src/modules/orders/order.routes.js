@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { resolveStore } from "../middleware/resolveTenant.js";
+import { resolveTenantPrisma } from "../middleware/resolveTenantPrisma.js";
 import { tenantAuthMiddleware } from "../middleware/tenantAuth.middleware.js";
 
 import {
-  createOrderFromCart,
   createOrderFromItems,
   getOrdersByCustomer,
   getOrderById
@@ -12,19 +11,15 @@ import {
 const router = Router();
 
 /**
- * =========================
- * 🔐 TENANT CUSTOMER ROUTES
- * =========================
+ * POST /api/public/:slug/orders/create-from-items
  */
-
-/** POST /api/public/:slug/orders/create-from-items */
 router.post(
-  "/public/:slug/orders/create-from-items",
-  resolveStore,          // ⬅️ PRIMERO resuelve tienda
-  tenantAuthMiddleware, // ⬅️ luego valida customer
+  "/orders/create-from-items",
+  resolveTenantPrisma,
+  tenantAuthMiddleware,
   async (req, res) => {
     try {
-      const { items, billing } = req.body;
+      const { items } = req.body;
 
       if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ message: "Items are required" });
@@ -33,8 +28,7 @@ router.post(
       const order = await createOrderFromItems(
         req,
         req.customer.id,
-        items,
-        billing
+        items
       );
 
       res.status(201).json(order);
@@ -44,10 +38,12 @@ router.post(
   }
 );
 
-/** GET /api/public/:slug/orders */
+/**
+ * GET /api/public/:slug/orders
+ */
 router.get(
-  "/public/:slug/orders",
-  resolveStore,
+  "/orders",
+  resolveTenantPrisma,
   tenantAuthMiddleware,
   async (req, res) => {
     const orders = await getOrdersByCustomer(req, req.customer.id);
@@ -55,10 +51,12 @@ router.get(
   }
 );
 
-/** GET /api/public/:slug/orders/:id */
+/**
+ * GET /api/public/:slug/orders/:id
+ */
 router.get(
-  "/public/:slug/orders/:id",
-  resolveStore,
+  "/orders/:id",
+  resolveTenantPrisma,
   tenantAuthMiddleware,
   async (req, res) => {
     const order = await getOrderById(
