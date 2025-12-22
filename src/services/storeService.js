@@ -1,8 +1,20 @@
-// Antes (ejemplo que falla):
-// const existe = await prisma.store.findUnique({ where: { existe: storeName } });
+// 1️⃣ Validar dominio (único)
+const existingDomain = await prisma.store.findUnique({
+  where: { domain: cleanDomain }
+});
+if (existingDomain) {
+  return res.status(409).json({ message: "Dominio ya en uso" });
+}
 
-// Reemplazar por una consulta válida. Opción A: si tienes un campo único (p. ej. slug o id):
-const existing = await prisma.store.findUnique({ where: { slug: storeSlug } });
+// 2️⃣ Validar slug (único)
+const existingSlug = await prisma.store.findUnique({
+  where: { slug: storeSlug }
+});
+if (existingSlug) {
+  return res.status(409).json({ message: "Slug ya en uso" });
+}
 
-// Opción B: si "name" no es unique, usa findFirst:
-const existingByName = await prisma.store.findFirst({ where: { name: storeName } });
+// 3️⃣ (Opcional) advertir nombre repetido
+const existingName = await prisma.store.findFirst({
+  where: { name: storeName }
+});

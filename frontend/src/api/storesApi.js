@@ -1,49 +1,47 @@
-import axios from "./axios";
+// src/api/storesApi.js
+import axios from "axios";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
-// Obtener tienda pública
-export async function getStorePublic(id) {
-  const res = await fetch(`${API}/api/stores/public/${id}`);
-  if (!res.ok) throw new Error(`Error obteniendo tienda ${res.status}`);
-  return await res.json();
+/**
+ * 🔓 Obtener tienda pública por slug
+ */
+export async function getStorePublic(slug) {
+  const res = await axios.get(`${API}/api/public/${slug}`);
+  return res.data;
 }
 
-// Obtener productos públicos
-export async function getProductsPublic(id, filters = {}) {
-  const params = new URLSearchParams();
-  Object.entries(filters).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && String(v).trim() !== "") params.set(k, String(v));
-  });
-
-  const url = `${API}/api/stores/public/${id}/products${params.toString() ? "?" + params.toString() : ""}`;
-  const res = await fetch(url);
-  if (!res.ok) return [];
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
+/**
+ * 🔓 Obtener productos públicos (CORREGIDO)
+ */
+export async function getProductsPublic(storeId) {
+  const res = await axios.get(`${API}/api/stores/${storeId}/products`);
+  return res.data;
 }
 
-// Obtener reseñas de la tienda
-export const getStoreReviews = async (storeId) => {
-  const res = await fetch(`${API}/api/reviews/stores/${storeId}`);
-  if (!res.ok) throw new Error(`Error cargando reseñas: ${res.status}`);
-  return res.json();
-};
+/**
+ * 🔓 Obtener reseñas de la tienda
+ */
+export async function getStoreReviews(storeId) {
+  const res = await axios.get(`${API}/api/reviews/stores/${storeId}`);
+  return res.data;
+}
 
-// Crear una nueva reseña
-export const createReview = async (storeId, data) => {
-  const payload = { ...data, storeId };
-  const res = await fetch(`${API}/api/reviews`, {
-    
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      // incluir token si es necesario
-      Authorization: `Bearer ${localStorage.getItem(`store:${storeId}:token`) || ""}`,
-    },
-    body: JSON.stringify(payload),
-  });
+/**
+ * 🔐 Crear reseña (cliente autenticado)
+ */
+export async function createReview({ storeId, comment, rating }) {
+  const token = localStorage.getItem(`store:${storeId}:token`);
 
-  if (!res.ok) throw new Error(`Error creando reseña: ${res.status}`);
-  return res.json();
-};
+  const res = await axios.post(
+    `${API}/api/reviews`,
+    { storeId, comment, rating },
+    {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : ""
+      }
+    }
+  );
+
+  return res.data;
+}

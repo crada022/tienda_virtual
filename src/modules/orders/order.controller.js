@@ -13,12 +13,14 @@ import {
  */
 export const createOrder = async (req, res) => {
   try {
-    const { storeId } = req.params;
     const customerId = req.customer.id;
 
-    const order = await createOrderFromCart(storeId, customerId);
-    return res.json(order);
+    const order = await createOrderFromCart(
+      req,               // 🔥 pasar req
+      customerId
+    );
 
+    return res.json(order);
   } catch (err) {
     return res.status(400).json({ message: err.message });
   }
@@ -29,26 +31,25 @@ export const createOrder = async (req, res) => {
  * CREAR ORDEN DESDE ITEMS
  * =========================
  */
-export const createOrderWithItems = async (req, res) => {
+export const createOrderFromItemsController = async (req, res) => {
   try {
-    const { storeId } = req.params;
+    const { items, billing } = req.body;
     const customerId = req.customer.id;
-    const { items } = req.body;
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "Items required" });
+    if (!Array.isArray(items) || !items.length) {
+      return res.status(400).json({ message: "Items are required" });
     }
 
     const order = await createOrderFromItems(
-      storeId,
+      req,          // 🔥 CLAVE
       customerId,
-      items
+      items,
+      billing
     );
 
-    return res.json(order);
-
+    return res.status(201).json(order);
   } catch (err) {
-    console.error("[order.createOrderWithItems]", err);
+    console.error("[order.createOrderFromItems]", err);
     return res.status(400).json({ message: err.message });
   }
 };
@@ -60,12 +61,14 @@ export const createOrderWithItems = async (req, res) => {
  */
 export const listMyOrders = async (req, res) => {
   try {
-    const { storeId } = req.params;
     const customerId = req.customer.id;
 
-    const orders = await getOrdersByCustomer(storeId, customerId);
-    return res.json(orders);
+    const orders = await getOrdersByCustomer(
+      req,           // 🔥 pasar req
+      customerId
+    );
 
+    return res.json(orders);
   } catch (err) {
     return res.status(500).json({ message: "Error fetching orders" });
   }
@@ -78,12 +81,11 @@ export const listMyOrders = async (req, res) => {
  */
 export const getOrder = async (req, res) => {
   try {
-    const { storeId } = req.params;
     const customerId = req.customer.id;
     const orderId = Number(req.params.id);
 
     const order = await getOrderById(
-      storeId,
+      req,           // 🔥 pasar req
       orderId,
       customerId
     );
@@ -93,7 +95,6 @@ export const getOrder = async (req, res) => {
     }
 
     return res.json(order);
-
   } catch (err) {
     return res.status(500).json({ message: "Error fetching order" });
   }
@@ -101,23 +102,21 @@ export const getOrder = async (req, res) => {
 
 /**
  * =========================
- * ACTUALIZAR ESTADO (ADMIN TIENDA)
+ * ACTUALIZAR ESTADO (ADMIN)
  * =========================
  */
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { storeId } = req.params;
     const { status } = req.body;
     const orderId = Number(req.params.id);
 
     const order = await updateOrderStatusByStore(
-      storeId,
+      req.store.id,   // 🔥 store real
       orderId,
       status
     );
 
     return res.json(order);
-
   } catch (err) {
     console.error("[order.updateOrderStatus]", err);
     return res.status(400).json({ message: "Error updating order status" });

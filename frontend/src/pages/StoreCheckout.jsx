@@ -2,158 +2,234 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import PublicNavBar from "../components/PublicNavBar";
 import styles from "../styles/checkout.module.css";
+import { getStorePublic } from "../api/storesApi";
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export default function StoreCheckout() {
-  const { storeId } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
-  const key = `store:${storeId}:cart`;
- const token =
-  localStorage.getItem(`store:${storeId}:token`) ||
-  localStorage.getItem("token") ||
-  localStorage.getItem("authToken") ||
-  localStorage.getItem("accessToken");
-  const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
+
+  const cartKey = `store:${slug}:cart`;
+  const token = localStorage.getItem(`store:${slug}:token`);
+
+  const [store, setStore] = useState(null);
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [billing, setBilling] = useState({ name: "", email: "", address: "" });
+  const [billing, setBilling] = useState({
+    name: "",
+    email: "",
+    address: ""
+  });
 
-  useEffect(()=> setCart(JSON.parse(localStorage.getItem(key) || "[]")), [storeId]);
-
-  // intentar prellenar datos del cliente tenant
+  /* =========================
+     LOAD STORE
+  ========================= */
   useEffect(() => {
-    
-    async function loadCustomer() {
-      if (!token) return;
+    async function loadStore() {
       try {
-        const res = await fetch(`${API}/api/stores/${storeId}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        const s = await getStorePublic(slug);
+        setStore(s);
+      } catch (err) {
+        console.error("Error cargando tienda", err);
+      }
+    }
+    loadStore();
+  }, [slug]);
+
+  /* =========================
+     LOAD CART
+  ========================= */
+  useEffect(() => {
+    setCart(JSON.parse(localStorage.getItem(cartKey) || "[]"));
+  }, [slug]);
+
+  /* =========================
+     LOAD CUSTOMER (ME)
+  ========================= */
+  useEffect(() => {
+    if (!token) return;
+
+    async function loadCustomer() {
+      try {
+        const res = await fetch(
+          `${API}/api/public/${slug}/auth/me`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+
         if (res.ok) {
-          const j = await res.json();
-          setBilling(b => ({ ...b, name: j.customer?.name || "", email: j.customer?.email || "" }));
+          const data = await res.json();
+          setBilling(b => ({
+            ...b,
+            name: data.customer?.name || "",
+            email: data.customer?.email || ""
+          }));
         }
-      } catch (e) {}
+      } catch (err) {
+        console.error("Error cargando cliente", err);
+      }
     }
+
     loadCustomer();
-  }, [storeId, token]);
+  }, [slug, token]);
 
- async function submitOrder() {
-  if (!token) return alert("Necesitas iniciar sesión en esta tienda para comprar.");
-  if (!cart.length) return alert("Carrito vacío");
-  setLoading(true);
-
-  try {
-    // Preparar items para la orden
-    const payloadItems = cart.map(it => ({
-      productId: it.productId || it.id || it._id,
-      quantity: Number(it.quantity || 1),
-      price: Number(it.price || 0)
-    }));
-
-    // Crear orden en backend (customerId viene del JWT)
-    const orderRes = await fetch(`${API}/api/stores/${storeId}/orders/create-from-items`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "x-store-id": storeId
-      },
-      body: JSON.stringify({
-        items: payloadItems,
-        billing // opcional
-      })
-    });
-
-    if (!orderRes.ok) {
-      const errBody = await orderRes.json().catch(() => ({}));
-      throw new Error(errBody.message || "Error creando orden");
-    }
-
-    const order = await orderRes.json();
-
-    // Crear sesión de Stripe y redirigir
-const sessRes = await fetch(
-  `${API}/api/payments/stripe/create-session`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      "x-store-id": storeId
-    },
-    body: JSON.stringify({
-      orderId: order.id // 🔴 USAR EL ID REAL DE LA ORDEN
-    })
-  }
-);
-
-if (!sessRes.ok) {
-  const b = await sessRes.json().catch(() => null);
-  throw new Error(b?.error || "Error creando sesión de pago");
-}
-
-const data = await sessRes.json();
-
-
-    if (data.url) {
-      // limpiar carrito antes de redirigir
-      localStorage.removeItem(key);
-      window.location.href = data.url;
+  /* =========================
+     CREATE ORDER + STRIPE
+  ========================= */
+  async function submitOrder() {
+    if (!token) {
+      alert("Debes iniciar sesión para continuar");
       return;
     }
 
-    // si no redirige a Stripe, ir a la página de órdenes
-    localStorage.removeItem(key);
-    navigate(`/stores/${storeId}/orders`);
+    if (!cart.length) {
+      alert("Tu carrito está vacío");
+      return;
+    }
 
-  } catch (err) {
-    alert(err.message || "Error procesando orden");
-  } finally {
-    setLoading(false);
+    setLoading(true);
+
+    try {
+      // 1️⃣ Crear orden
+      const orderRes = await fetch(`${API}/api/public/${slug}/orders/create-from-items`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            items: cart.map(p => ({
+              productId: p.id,
+              quantity: Number(p.quantity || 1),
+              price: Number(p.price || 0)
+            })),
+            billing
+          })
+        }
+      );
+
+      if (!orderRes.ok) {
+        const err = await orderRes.json().catch(() => ({}));
+        throw new Error(err.error || "Error creando la orden");
+      }
+
+      const order = await orderRes.json();
+
+      // 2️⃣ Stripe session
+      const stripeRes = await fetch(
+        `${API}/api/payments/stripe/create-session`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            orderId: order.id
+          })
+        }
+      );
+
+      if (!stripeRes.ok) {
+        const err = await stripeRes.json().catch(() => ({}));
+        throw new Error(err.error || "Error creando sesión de pago");
+      }
+
+      const { url } = await stripeRes.json();
+
+      localStorage.removeItem(cartKey);
+
+      if (url) {
+        window.location.href = url;
+      } else {
+        navigate(`/${slug}/orders`);
+      }
+
+    } catch (err) {
+      alert(err.message || "Error procesando la orden");
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
+  const total = cart.reduce(
+    (sum, i) => sum + (i.price || 0) * (i.quantity || 1),
+    0
+  );
 
-
-  const total = cart.reduce((s,i)=>s + (i.price||0) * (i.quantity||1), 0);
+  if (!store) return <div className={styles.loader}>Cargando tienda…</div>;
 
   return (
     <>
-      <PublicNavBar storeId={storeId} />
-      <div className={styles['checkout-wrap']}>
-        <div className={styles['checkout-main']}>
+      <PublicNavBar slug={slug} storeName={store.name} />
+
+      <div className={styles["checkout-wrap"]}>
+        <div className={styles["checkout-main"]}>
           <h2>Finalizar compra</h2>
+
           {!cart.length ? (
-            <div className={styles['no-products'] || ''}>Tu carrito está vacío</div>
+            <p>Tu carrito está vacío</p>
           ) : (
             <>
-              <div className={styles['cart-list']}>
-                {cart.map((it, idx) => (
-                  <div key={idx} className={styles['cart-item']}>
+              <div className={styles["cart-list"]}>
+                {cart.map((it, i) => (
+                  <div key={i} className={styles["cart-item"]}>
                     <img src={it.image || "/placeholder.png"} alt={it.name} />
-                    <div className="ci-body">
-                      <div className="ci-name">{it.name}</div>
-                      <div className="ci-meta">{(it.price||0).toFixed(2)} × {it.quantity}</div>
+                    <div>
+                      <strong>{it.name}</strong>
+                      <div>
+                        {(it.price || 0).toFixed(2)} × {it.quantity}
+                      </div>
                     </div>
-                    <div className={styles['ci-sub']}>{((it.price||0) * (it.quantity||1)).toFixed(2)}</div>
+                    <div>
+                      {((it.price || 0) * it.quantity).toFixed(2)}
+                    </div>
                   </div>
                 ))}
               </div>
 
-              <div className={styles['billing-box']}>
+              <div className={styles["billing-box"]}>
                 <h3>Datos de facturación</h3>
-                <label>Nombre</label>
-                <input value={billing.name} onChange={e => setBilling({ ...billing, name: e.target.value })} />
-                <label>Email</label>
-                <input value={billing.email} onChange={e => setBilling({ ...billing, email: e.target.value })} />
-                <label>Dirección</label>
-                <input value={billing.address} onChange={e => setBilling({ ...billing, address: e.target.value })} />
+
+                <input
+                  placeholder="Nombre"
+                  value={billing.name}
+                  onChange={e =>
+                    setBilling({ ...billing, name: e.target.value })
+                  }
+                />
+
+                <input
+                  placeholder="Email"
+                  value={billing.email}
+                  onChange={e =>
+                    setBilling({ ...billing, email: e.target.value })
+                  }
+                />
+
+                <input
+                  placeholder="Dirección"
+                  value={billing.address}
+                  onChange={e =>
+                    setBilling({ ...billing, address: e.target.value })
+                  }
+                />
               </div>
 
-              <div className={styles['checkout-footer']}>
-                <div className={styles['total'] || 'total'}>Total: <strong className={styles['price'] || 'price'}>{total.toFixed(2)} USD</strong></div>
-                <div className={styles['actions']}>
-                  <button className={styles['btn-outline'] || 'btn-outline'} onClick={() => { localStorage.removeItem(key); setCart([]); }}>Vaciar</button>
-                  <button className={styles['btn-add'] || 'btn-add'} onClick={submitOrder} disabled={loading}>{loading ? "Procesando..." : "Pagar y finalizar"}</button>
-                </div>
+              <div className={styles["checkout-footer"]}>
+                <strong>Total: {total.toFixed(2)} COP</strong>
+                <button
+                  className={styles["btn-add"]}
+                  onClick={submitOrder}
+                  disabled={loading}
+                >
+                  {loading ? "Procesando..." : "Pagar y finalizar"}
+                </button>
               </div>
             </>
           )}

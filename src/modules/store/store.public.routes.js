@@ -1,27 +1,38 @@
 import { Router } from "express";
-import { resolveStore } from "../middleware/resolveTenant.js";
 import { tenantAuthMiddleware } from "../middleware/tenantAuth.middleware.js";
-
 import {
-  createOrderFromCart,
   createOrderFromItems,
   getOrdersByCustomer,
   getOrderById
-} from "./order.service.js";
+} from "../orders/order.service.js";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
-/**
- * =========================
- * 🔐 TENANT CUSTOMER ROUTES
- * =========================
- */
+/* =========================
+   PUBLIC STORE INFO
+========================= */
+router.get("/", async (req, res) => {
+  const store = req.store;
 
-/** POST /api/public/:slug/orders/create-from-items */
+  res.json({
+    id: store.id,
+    name: store.name,
+    description: store.description,
+    bannerUrl: store.bannerUrl,
+    colorTheme: store.colorTheme,
+    layoutType: store.layoutType,
+    style: store.style,
+    slug: store.slug,
+    domain: store.domain
+  });
+});
+
+/* =========================
+   CREATE ORDER (CUSTOMER)
+========================= */
 router.post(
-  "/public/:slug/orders/create-from-items",
-  resolveStore,          // ⬅️ PRIMERO resuelve tienda
-  tenantAuthMiddleware, // ⬅️ luego valida customer
+  "/orders/create-from-items",
+  tenantAuthMiddleware,
   async (req, res) => {
     try {
       const { items, billing } = req.body;
@@ -39,26 +50,32 @@ router.post(
 
       res.status(201).json(order);
     } catch (err) {
+      console.error("[public.createOrder]", err);
       res.status(400).json({ message: err.message });
     }
   }
 );
 
-/** GET /api/public/:slug/orders */
+/* =========================
+   LIST MY ORDERS
+========================= */
 router.get(
-  "/public/:slug/orders",
-  resolveStore,
+  "/orders",
   tenantAuthMiddleware,
   async (req, res) => {
-    const orders = await getOrdersByCustomer(req, req.customer.id);
+    const orders = await getOrdersByCustomer(
+      req,
+      req.customer.id
+    );
     res.json(orders);
   }
 );
 
-/** GET /api/public/:slug/orders/:id */
+/* =========================
+   GET ORDER BY ID
+========================= */
 router.get(
-  "/public/:slug/orders/:id",
-  resolveStore,
+  "/orders/:id",
   tenantAuthMiddleware,
   async (req, res) => {
     const order = await getOrderById(

@@ -1,28 +1,32 @@
 // src/utils/database.js
-import { PrismaClient } from "@prisma/client";
+import { platformPrisma } from "../config/db.js";
+import { PrismaClient } from "../prisma/tenant/index.js";
 
 const clients = {};
 
-// Crea un cliente de Prisma apuntando a la base de datos del tenant
-export default function getPrismaClientForStore(dbName) {
-  if (!dbName) throw new Error("dbName is required");
+export async function getPrismaClientForStore(storeId) {
+  if (!storeId) throw new Error("storeId requerido");
 
-  // Evita crear el mismo cliente muchas veces
-  if (!clients[dbName]) {
-    const user = process.env.PGUSER || "postgres";
-    const pass = process.env.PGPASSWORD || "admin";
-    const host = process.env.PGHOST || "localhost";
-    const port = process.env.PGPORT || 5432;
-    const url = `postgresql://${user}:${encodeURIComponent(pass)}@${host}:${port}/${dbName}?schema=public`;
+  // 1️⃣ Buscar tienda en PLATFORM
+  const store = await platformPrisma.store.findUnique({
+    where: { id: storeId }
+  });
 
-    clients[dbName] = new PrismaClient({
+  if (!store) throw new Error("Tienda no encontrada");
+  if (!store.dbName) throw new Error("Tienda sin dbName");
+
+  // 2️⃣ Cachear Prisma TENANT
+  if (!clients[store.dbName]) {
+    const url = `postgresql://postgres:admin@localhost:5432/${store.dbName}?schema=public`;
+
+    clients[store.dbName] = new PrismaClient({
       datasources: {
-        db: {
-          url,
-        },
-      },
+        db: { url }
+      }
     });
+
+    console.log("[Tenant Prisma URL]", url);
   }
 
-  return clients[dbName];
+  return clients[store.dbName];
 }

@@ -20,11 +20,13 @@ model User {
 }
 
 model Store {
-  id        String   @id @default(uuid())
-  name      String
-  domain    String?
+  id     String  @id @default(uuid())
+  name   String
+  slug   String  @unique
+  domain String? @unique
+  dbName String  @unique
+
   createdAt DateTime @default(now())
-  ownerId   Int
   active    Boolean  @default(true)
 
   address     String?
@@ -37,11 +39,10 @@ model Store {
   layoutType String?
   style      String?
 
-  dbName String   @unique
-  existe Boolean? @default(true)
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id])
 
-  owner       User         @relation(fields: [ownerId], references: [id])
-  aiTemplates AITemplate[] // <<--- Campo inverso agregado
+  aiTemplates AITemplate[]
 }
 
 model AITemplate {

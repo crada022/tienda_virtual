@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { platformPrisma } from "../../prisma/platform.js";
+import { platformPrisma } from "../../config/db.js";
 import { extractUserFromHeader } from "./auth.middleware.js";
 
 /**

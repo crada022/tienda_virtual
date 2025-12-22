@@ -1,5 +1,5 @@
 import prisma from "../../config/db.js";
-import getPrismaClientForStore from "../../utils/database.js";
+import { getPrismaClientForStore } from "../../utils/database.js";
 import {
   registerCustomer,
   loginCustomer,
@@ -13,19 +13,18 @@ import {
  */
 export async function postRegister(req, res) {
   try {
-    const { storeId } = req.params;
     const { email, password, name } = req.body;
+    const store = req.store; // 🔥 viene de resolveStore
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email y password son requeridos" });
     }
 
-    const store = await prisma.store.findUnique({ where: { id: storeId } });
     if (!store) {
       return res.status(404).json({ error: "Tienda no encontrada" });
     }
 
-    const result = await registerCustomer(store.dbName, {
+    const result = await registerCustomer(store.id, {
       email: email.toLowerCase().trim(),
       password,
       name: name?.trim() || null
@@ -38,6 +37,7 @@ export async function postRegister(req, res) {
   }
 }
 
+
 /**
  * =======================
  * LOGIN CUSTOMER
@@ -45,19 +45,18 @@ export async function postRegister(req, res) {
  */
 export async function postLogin(req, res) {
   try {
-    const { storeId } = req.params;
     const { email, password } = req.body;
+    const store = req.store; // 🔥 viene de resolveStore
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email y password son requeridos" });
     }
 
-    const store = await prisma.store.findUnique({ where: { id: storeId } });
     if (!store) {
       return res.status(404).json({ error: "Tienda no encontrada" });
     }
 
-    const result = await loginCustomer(store.dbName, {
+    const result = await loginCustomer(store.id, {
       email: email.toLowerCase().trim(),
       password
     });
@@ -68,6 +67,8 @@ export async function postLogin(req, res) {
     res.status(401).json({ error: err.message || "Credenciales inválidas" });
   }
 }
+
+
 
 /**
  * =======================
@@ -84,7 +85,6 @@ export async function getMe(req, res) {
     const token = authHeader.split(" ")[1];
     const payload = verifyTenantToken(token);
 
-    // ✅ VALIDACIÓN CORRECTA
     if (
       !payload ||
       payload.type !== "CUSTOMER" ||
@@ -94,7 +94,7 @@ export async function getMe(req, res) {
       return res.status(401).json({ error: "Token inválido" });
     }
 
-    const tenantDB = getPrismaClientForStore(payload.storeId);
+    const tenantDB = await getPrismaClientForStore(payload.storeId);
 
     const customer = await tenantDB.customer.findUnique({
       where: { id: payload.sub },

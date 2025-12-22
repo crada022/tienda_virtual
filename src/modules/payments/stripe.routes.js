@@ -1,6 +1,6 @@
 import express from "express";
 import { createCheckoutSession, webhook } from "./stripe.controller.js";
-import { resolveTenant } from "../middleware/resolveTenant.js";
+import { resolveStore } from "../middleware/resolveTenant.js";
 import { tenantAuthMiddleware } from "../middleware/tenantAuth.middleware.js";
 
 const router = express.Router();
@@ -10,7 +10,7 @@ const router = express.Router();
  */
 router.post(
   "/stripe/create-session",
-  resolveTenant,
+  resolveStore,
   tenantAuthMiddleware,
   createCheckoutSession
 );

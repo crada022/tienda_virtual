@@ -38,17 +38,22 @@ api.interceptors.request.use((config) => {
 }, (err) => Promise.reject(err));
 
 // create with AI
-export async function createStoreWithAI(prompt) {
+export async function createStoreWithAI({ prompt, domain }) {
   try {
-    const token = readTokenFromStorage();
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const resp = await api.post("/api/stores/create/ai", { prompt }, { headers });
+    const resp = await api.post("/api/ai/create-store", {
+      prompt,
+      domain
+    });
     return resp.data;
   } catch (err) {
-    console.error("[storeService.createStoreWithAI] error:", err?.response?.data || err.message);
+    console.error(
+      "[storeService.createStoreWithAI] error:",
+      err?.response?.data || err.message
+    );
     throw err;
   }
 }
+
 
 // create normal
 export async function createStore(payload) {

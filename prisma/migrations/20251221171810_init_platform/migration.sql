@@ -17,9 +17,10 @@ CREATE TABLE "User" (
 CREATE TABLE "Store" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
     "domain" TEXT,
+    "dbName" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "ownerId" INTEGER NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "address" TEXT,
     "description" TEXT,
@@ -29,8 +30,7 @@ CREATE TABLE "Store" (
     "colorTheme" JSONB,
     "layoutType" TEXT,
     "style" TEXT,
-    "dbName" TEXT NOT NULL,
-    "existe" BOOLEAN DEFAULT true,
+    "ownerId" INTEGER NOT NULL,
 
     CONSTRAINT "Store_pkey" PRIMARY KEY ("id")
 );
@@ -48,6 +48,12 @@ CREATE TABLE "AITemplate" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Store_slug_key" ON "Store"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Store_domain_key" ON "Store"("domain");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Store_dbName_key" ON "Store"("dbName");

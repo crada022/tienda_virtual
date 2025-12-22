@@ -8,7 +8,6 @@ import {
   deleteStore,
   getStorePublic,
   getStoreProductsPublic,
-  generateStoreWithAI,
   uploadLogo
 } from "./store.controller.js";
 
@@ -24,8 +23,8 @@ router.post("/create/ai", requireAuth, createAIStore);
 /* =========================
    🔓 RUTAS PÚBLICAS
 ========================= */
-router.get("/public/:id", getStorePublic);
-router.get("/public/:id/products", getStoreProductsPublic);
+router.get("/public", getStorePublic);
+router.get("/public/products", getStoreProductsPublic);
 
 /* =========================
    🔐 RUTAS PRIVADAS (OWNER)
@@ -39,6 +38,6 @@ router.delete("/:id", requireAuth, deleteStore);
 /* =========================
    🤖 IA – GENERAR DISEÑO
 ========================= */
-router.post("/:id/generate-ai", requireAuth, generateStoreWithAI);
+router.post("/:id/generate-ai", requireAuth);
 
 export default router;

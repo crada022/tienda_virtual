@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getStorePublic, getStoreReviews, createReview } from "../api/storesApi";
+import {
+  getStorePublic,
+  getStoreReviews,
+  createReview
+} from "../api/storesApi";
 import PublicNavBar from "../components/PublicNavBar";
 import styles from "../styles/storeReviews.module.css";
 
 export default function StoreReviews() {
-  const { storeId } = useParams();
+  const { slug } = useParams(); // ✅ SLUG
   const [store, setStore] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,43 +21,55 @@ export default function StoreReviews() {
 
   useEffect(() => {
     let mounted = true;
-    const loadData = async () => {
+
+    async function loadData() {
       try {
-        const [storeRes, reviewsRes] = await Promise.all([
-          getStorePublic(storeId),
-          getStoreReviews(storeId),
-        ]);
+        // 1️⃣ tienda por slug
+        const storeData = await getStorePublic(slug);
+        if (!storeData) throw new Error("Tienda no encontrada");
+
+        // 2️⃣ reseñas por storeId
+        const reviewsData = await getStoreReviews(storeData.id);
 
         if (!mounted) return;
 
-        // 🔹 Aquí ya no usamos .data porque getStorePublic retorna el objeto directamente
-        setStore(storeRes);
-        setReviews(reviewsRes.reviews || []); // Ajusta según lo que devuelva tu API
-      } catch (err) {
-        console.error("Error cargando tienda y reseñas:", err);
+        setStore(storeData);
+        setReviews(Array.isArray(reviewsData) ? reviewsData : []);
+      } catch (error) {
+        console.error("Error cargando reseñas:", error);
       } finally {
         if (mounted) setLoading(false);
       }
-    };
+    }
+
     loadData();
     return () => (mounted = false);
-  }, [storeId]);
+  }, [slug]);
 
+  /* =========================
+     SUBMIT REVIEW
+  ========================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newReview.trim()) return;
+    if (!newReview.trim() || !store) return;
+
     setSubmitting(true);
     setErr(null);
+
     try {
-      const res = await createReview(storeId, { comment: newReview, rating });
-      const created = res.review || res;
+      const created = await createReview({
+        storeId: store.id,
+        comment: newReview,
+        rating
+      });
+
       setReviews(prev => [created, ...prev]);
       setNewReview("");
       setRating(5);
       setMsg("Reseña enviada correctamente.");
-      setTimeout(() => setMsg(null), 3500);
+      setTimeout(() => setMsg(null), 3000);
     } catch (error) {
-      console.error("Error creando reseña", error);
+      console.error("Error creando reseña:", error);
       setErr("No se pudo enviar la reseña.");
       setTimeout(() => setErr(null), 4000);
     } finally {
@@ -61,65 +77,82 @@ export default function StoreReviews() {
     }
   };
 
-  if (loading) return <div className={styles.loading}>Cargando tienda…</div>;
+  if (loading) return <div className={styles.loading}>Cargando reseñas…</div>;
+  if (!store) return <div className={styles.error}>Tienda no encontrada</div>;
 
   return (
     <>
-      <PublicNavBar storeId={storeId} storeName={store?.name || "Tienda"} />
+      {/* ✅ NAVBAR CORRECTO */}
+      <PublicNavBar slug={slug} storeName={store.name} />
 
       <div className={styles.reviewsContainer}>
-        <h2 className={styles.title}>Reseñas de {store?.name}</h2>
+        <h2 className={styles.title}>Reseñas de {store.name}</h2>
 
+        {/* FORM */}
         <div className={styles.reviewForm}>
           <h3>Escribir una reseña</h3>
+
           <form onSubmit={handleSubmit}>
-            <label>Puntuación:</label>
+            <label>Puntuación</label>
             <select
-              aria-label="Puntuación"
               value={rating}
               onChange={(e) => setRating(Number(e.target.value))}
               disabled={submitting}
             >
-              <option value={5}>⭐️⭐️⭐️⭐️⭐️</option>
-              <option value={4}>⭐️⭐️⭐️⭐️</option>
-              <option value={3}>⭐️⭐️⭐️</option>
-              <option value={2}>⭐️⭐️</option>
-              <option value={1}>⭐️</option>
+              <option value={5}>⭐⭐⭐⭐⭐</option>
+              <option value={4}>⭐⭐⭐⭐</option>
+              <option value={3}>⭐⭐⭐</option>
+              <option value={2}>⭐⭐</option>
+              <option value={1}>⭐</option>
             </select>
 
-            <label htmlFor="reviewComment">Comentario:</label>
+            <label>Comentario</label>
             <textarea
-              id="reviewComment"
-              placeholder="Escribe tu reseña..."
               value={newReview}
               onChange={(e) => setNewReview(e.target.value)}
-              disabled={submitting}
               rows={4}
+              disabled={submitting}
+              placeholder="Escribe tu reseña…"
             />
 
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button type="submit" className={styles.btnReview} disabled={submitting || !newReview.trim()}>
-                {submitting ? 'Enviando...' : 'Enviar reseña'}
-              </button>
-              {msg && <div className={styles.success}>{msg}</div>}
-              {err && <div className={styles.error}>{err}</div>}
-            </div>
+            <button
+              type="submit"
+              className={styles.btnReview}
+              disabled={submitting || !newReview.trim()}
+            >
+              {submitting ? "Enviando…" : "Enviar reseña"}
+            </button>
+
+            {msg && <p className={styles.success}>{msg}</p>}
+            {err && <p className={styles.error}>{err}</p>}
           </form>
         </div>
 
+        {/* LIST */}
         <div className={styles.reviewsList}>
           <h3>Reseñas recientes</h3>
-          {reviews.length === 0 && <p className={styles.muted}>No hay reseñas aún.</p>}
+
+          {reviews.length === 0 && (
+            <p className={styles.muted}>No hay reseñas aún.</p>
+          )}
 
           {reviews.map((r, i) => (
             <div key={r.id || i} className={styles.reviewCard}>
               <div className={styles.reviewHeader}>
-                <span className={styles.reviewRating}>{Array(Math.max(0, r.rating || 0)).fill('⭐').join('')}</span>
-                <span className={styles.reviewDate}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '-'}</span>
+                <span className={styles.reviewRating}>
+                  {"⭐".repeat(r.rating || 0)}
+                </span>
+                <span className={styles.reviewDate}>
+                  {r.createdAt
+                    ? new Date(r.createdAt).toLocaleDateString()
+                    : ""}
+                </span>
               </div>
 
               <p className={styles.reviewComment}>{r.comment}</p>
-              <p className={styles.reviewUser}>Por: {r.userName || r.user || 'Usario_Registrado'}</p>
+              <p className={styles.reviewUser}>
+                Por: {r.userName || "Usuario"}
+              </p>
             </div>
           ))}
         </div>

@@ -23,6 +23,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import PublicReviews from "./pages/PublicReviews";
 import StoreReviews from "./pages/StoreReviews";
+import StoreAuthModal from "./components/StoreAuthModal";
 
 function ProtectedLayout() {
   const { token } = useAuth();
@@ -44,41 +45,37 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Rutas públicas / auth */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/" element={token ? <Navigate to="/stores/create" /> : <Navigate to="/login" />} />
+  {/* Auth */}
+  <Route path="/login" element={<Login />} />
+  <Route path="/register" element={<Register />} />
+  <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* RUTAS PÚBLICAS DE TIENDAS (SPA routes) */}
-        <Route path="/stores/:storeId/reviews" element={<StoreReviews />} />
-        <Route path="/store/:storeId/reviews" element={<PublicReviews />} />
-        <Route path="/stores/:storeId" element={<PublicStore />} />
-        <Route path="/stores/:storeId/products" element={<StoreProducts />} />
-        <Route path="/stores/:storeId/products/:productId" element={<ProductDetail />} />
-        <Route path="/stores/:storeId/cart" element={<StoreCart />} />
-        <Route path="/stores/:storeId/checkout" element={<StoreCheckout />} />
-        {/* Rutas públicas de cuenta separadas: perfil y pedidos */}
-        <Route path="/stores/:storeId/account" element={<StoreProfile />} />
-        <Route path="/stores/:storeId/orders" element={<StoreOrders />} />
-          
-          <Route path="/cart/checkout" element={<Checkout />} />
-          <Route path="/orders" element={<Orders />} />  
-        {/* Layout protegido (NavBar + main) */}
-        <Route element={<ProtectedLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/stores/:storeId/edit" element={<EditStore />} />
-          <Route path="/stores/create" element={<CreateStore />} />
-          <Route path="/stores/list" element={<StoresList />} />
-          <Route path="/stores/:storeId/manage-products" element={<ManageProducts />} />
-          
-          <Route path="/account" element={<Account />} />
-          {/* si entras al root estando autenticado, redirige dentro del layout */}
-          <Route path="/" element={<Navigate to="/stores/create" />} />
-        </Route>
-      </Routes>
+
+
+  {/* ⭐ NUEVA RUTA PÚBLICA POR SLUG */}
+   <Route path="/store/:slug" element={<PublicStore />} />
+   <Route path="/store/:slug/products" element={<StoreProducts />} />
+    <Route path="/store/:slug/products/:productId" element={<ProductDetail />} />
+    <Route path="/store/:slug/cart" element={<StoreCart />} />
+    <Route path="/store/:slug/checkout" element={<StoreCheckout />} />
+    <Route path="/store/:slug/reviews" element={<StoreReviews />} />
+    <Route path="/store/:slug/account" element={<StoreProfile />} />
+    <Route path="/store/:slug/orders" element={<StoreOrders />} />
+  
+  {/* Layout protegido */}
+  <Route element={<ProtectedLayout />}>
+    <Route path="/dashboard" element={<Dashboard />} />
+    <Route path="/stores/create" element={<CreateStore />} />
+    <Route path="/stores/list" element={<StoresList />} />
+    <Route path="/stores/:storeId/manage-products" element={<ManageProducts />} />
+    <Route path="/stores/:storeId/edit" element={<EditStore />} />
+    <Route path="/account" element={<Account />} />
+  </Route>
+</Routes>
+<StoreAuthModal />
     </BrowserRouter>
   );
+  
 }
 
 export default App;

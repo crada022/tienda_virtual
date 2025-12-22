@@ -2,96 +2,126 @@ import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import styles from "../styles/publicNavBar.module.css";
 
-export default function PublicNavBar({ storeId, storeName }) {
+export default function PublicNavBar({ slug, storeName }) {
   const [customer, setCustomer] = useState(null);
   const [cartCount, setCartCount] = useState(0);
-  const [token, setToken] = useState(() => (storeId ? localStorage.getItem(`store:${storeId}:token`) : null) || null);
 
-  const loadCustomer = useCallback(async (tkn) => {
-    if (!storeId || !tkn) return setCustomer(null);
+  const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
+  const tokenKey = `store:${slug}:token`;
+
+  // 🔐 cargar cliente
+  const loadCustomer = useCallback(async () => {
+    const token = localStorage.getItem(tokenKey);
+    if (!token) {
+      setCustomer(null);
+      return;
+    }
+
     try {
-      const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
-      const res = await fetch(`${API}/api/stores/${storeId}/auth/me`, {
-        headers: { Authorization: `Bearer ${tkn}` }
+      const res = await fetch(`${API}/api/public/${slug}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
+
       if (res.ok) {
-        const json = await res.json();
-        setCustomer(json.customer ?? null);
+        const data = await res.json();
+        setCustomer(data.customer || null);
       } else {
         setCustomer(null);
       }
     } catch {
       setCustomer(null);
     }
-  }, [storeId]);
+  }, [slug]);
 
+  // 🛒 carrito
   const updateCartCount = useCallback(() => {
-    if (!storeId) return setCartCount(0);
-    const key = `store:${storeId}:cart`;
-    const cart = JSON.parse(localStorage.getItem(key) || "[]");
+    const cart = JSON.parse(
+      localStorage.getItem(`store:${slug}:cart`) || "[]"
+    );
     setCartCount(cart.reduce((s, p) => s + (p.quantity || 1), 0));
-  }, [storeId]);
+  }, [slug]);
 
   useEffect(() => {
-    setToken(storeId ? (localStorage.getItem(`store:${storeId}:token`) || null) : null);
-    loadCustomer(storeId ? localStorage.getItem(`store:${storeId}:token`) : null);
+    loadCustomer();
     updateCartCount();
 
-    const onAuthChanged = () => {
-      const t = localStorage.getItem(`store:${storeId}:token`) || null;
-      setToken(t);
-      loadCustomer(t);
-    };
-    const onCartUpdated = () => updateCartCount();
-
-    window.addEventListener("store-auth-changed", onAuthChanged);
-    window.addEventListener("store-cart-updated", onCartUpdated);
+    window.addEventListener("store-auth-changed", loadCustomer);
+    window.addEventListener("store-cart-updated", updateCartCount);
 
     return () => {
-      window.removeEventListener("store-auth-changed", onAuthChanged);
-      window.removeEventListener("store-cart-updated", onCartUpdated);
+      window.removeEventListener("store-auth-changed", loadCustomer);
+      window.removeEventListener("store-cart-updated", updateCartCount);
     };
-  }, [storeId, loadCustomer, updateCartCount]);
+  }, [loadCustomer, updateCartCount]);
 
-  function openAuth(mode = "login") {
-    window.dispatchEvent(new CustomEvent("open-store-auth", { detail: { storeId, mode } }));
+  // 🔓 abrir modal auth
+  function openAuth(mode) {
+    window.dispatchEvent(
+      new CustomEvent("open-store-auth", {
+        detail: { slug, mode }
+      })
+    );
   }
 
-  const basePath = storeId ? `/stores/${storeId}` : '#';
+  // ✅ RUTA BASE CORRECTA
+  const basePath = `/store/${slug}`;
 
   return (
-    <header className={styles.publicNav} role="banner">
+    <header className={styles.publicNav}>
       <div className={styles.publicNavInner}>
-        <Link to={basePath} className={styles.brandWrap} aria-label={`Ir a ${storeName || "la tienda"}`}>
-          <span className={styles.logo} aria-hidden>{(storeName || "Tienda").slice(0, 1).toUpperCase()}</span>
-          <span className={styles.name}>{storeName || "Tienda"}</span>
+        {/* LOGO */}
+        <Link to={basePath} className={styles.brandWrap}>
+          <span className={styles.logo}>
+            {(storeName || "T")[0].toUpperCase()}
+          </span>
+          <span className={styles.name}>{storeName}</span>
         </Link>
 
-        <nav className={styles.centerNav} role="navigation" aria-label="Navegación tienda">
-          <Link to={`${basePath}/products`} className={styles.navItem}>Productos</Link>
-          <Link to={`${basePath}/reviews`} className={styles.navItem}>Ver reseñas</Link>
+        {/* NAV */}
+        <nav className={styles.centerNav}>
+          <Link to={`${basePath}/products`} className={styles.navItem}>
+            Productos
+          </Link>
+          <Link to={`${basePath}/reviews`} className={styles.navItem}>
+            Reseñas
+          </Link>
         </nav>
 
-        <div className={styles.rightArea} role="group" aria-label="Acciones usuario">
-          <Link to={`${basePath}/cart`} className={styles.navCart} aria-label="Ver carrito">
-            <span className={styles.icon} aria-hidden>🛒</span>
-            {cartCount > 0 && <span className={styles.badge} aria-hidden>{cartCount}</span>}
+        {/* RIGHT */}
+        <div className={styles.rightArea}>
+          <Link to={`${basePath}/cart`} className={styles.navCart}>
+            🛒
+            {cartCount > 0 && (
+              <span className={styles.badge}>{cartCount}</span>
+            )}
           </Link>
 
-          {customer && (
-              <Link to={`${basePath}/orders`} className={styles.navOrders} style={{ marginLeft: 8 }}>Pedidos</Link>
-          )}
-
           {customer ? (
-            <div className={styles.customerInfo} aria-live="polite">
-              <Link to={`${basePath}/account`} title="Mi cuenta" className={styles.customerLink}>
+            <>
+              <Link to={`${basePath}/orders`} className={styles.navItem}>
+                Pedidos
+              </Link>
+              <Link
+                to={`${basePath}/account`}
+                className={styles.customerLink}
+              >
                 {customer.name || customer.email}
               </Link>
-            </div>
+            </>
           ) : (
             <div className={styles.guestActions}>
-              <button onClick={() => openAuth("login")} className={styles.btnOutline}>Ingresar</button>
-              <button onClick={() => openAuth("register")} className={styles.btnPrimary} style={{ marginLeft: 8 }}>Registrarse</button>
+              <button
+                onClick={() => openAuth("login")}
+                className={styles.btnOutline}
+              >
+                Ingresar
+              </button>
+              <button
+                onClick={() => openAuth("register")}
+                className={styles.btnPrimary}
+              >
+                Registrarse
+              </button>
             </div>
           )}
         </div>

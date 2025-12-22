@@ -1,37 +1,40 @@
-import { platformPrisma } from "../../prisma/platform.js";
-import { getTenantPrisma } from "../../prisma/tenant.js";
+import { platformPrisma } from "../../config/db.js";
 
-export const resolveTenant = async (req, res, next) => {
+export async function resolveStore(req, res, next) {
   try {
-    const storeId = req.headers["x-store-id"] || req.params.storeId || req.query.storeId;
-    const domain = req.headers["x-store-domain"] || req.query.domain;
+    let store = null;
 
-    if (!storeId && !domain) {
-      return res.status(400).json({ error: "storeId or domain required" });
+    // 1️⃣ Por dominio (producción)
+    const host = req.headers.host;
+    if (host && !host.includes("localhost")) {
+      store = await platformPrisma.store.findUnique({
+        where: { domain: host }
+      });
     }
 
-    const store = await platformPrisma.store.findFirst({
-      where: storeId ? { id: storeId } : { domain },
-    });
+    // 2️⃣ Por slug (desarrollo / SPA)
+    if (!store && req.params?.slug) {
+      store = await platformPrisma.store.findUnique({
+        where: { slug: req.params.slug }
+      });
+    }
 
-    if (!store) return res.status(404).json({ error: "Store not found" });
-    if (!store.dbName) return res.status(500).json({ error: "Store dbName is missing" });
+    // 3️⃣ Por storeId (fallback)
+    if (!store && req.params?.storeId) {
+      store = await platformPrisma.store.findUnique({
+        where: { id: req.params.storeId }
+      });
+    }
 
-    const tenantPrefix = process.env.TENANT_DB_PREFIX;
-    if (!tenantPrefix) return res.status(500).json({ error: "TENANT_DB_PREFIX missing in .env" });
+    if (!store) {
+      return res.status(404).json({ error: "Tienda no encontrada" });
+    }
 
-    const tenantDbUrl = tenantPrefix.endsWith("/")
-      ? tenantPrefix + store.dbName
-      : tenantPrefix + "/" + store.dbName;
-
-    console.log(`[resolveTenant] tenantDbUrl: ${tenantDbUrl}`);
-
-    req.tenantPrisma = getTenantPrisma(tenantDbUrl);
+    // 🔥 inyectar tienda en request
     req.store = store;
-
     next();
-  } catch (error) {
-    console.error("[resolveTenant] error:", error);
-    res.status(500).json({ error: "Internal server error" });
+  } catch (err) {
+    console.error("[resolveStore]", err);
+    return res.status(500).json({ error: "Error resolviendo tienda" });
   }
-};
+}

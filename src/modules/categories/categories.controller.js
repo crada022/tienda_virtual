@@ -1,5 +1,5 @@
-import platformPrisma from "../../config/db.js";
-import getPrismaClientForStore from "../../utils/database.js";
+import { platformPrisma } from "../../config/db.js";
+import { getPrismaClientForStore } from "../../utils/database.js";
 
 /**
  * Validar tienda en BD plataforma
@@ -30,10 +30,7 @@ function canManageStore(req, store) {
   const userId = user.sub || user.id;
   const role = (user.role || "").toLowerCase();
 
-  // Admin siempre puede
   if (role === "admin") return true;
-
-  // Owner también puede
   if (userId && userId === store.ownerId) return true;
 
   return false;
@@ -47,22 +44,23 @@ export async function getCategories(req, res) {
   try {
     const { storeId } = req.params;
 
-    const store = await getStoreOr404(storeId);
-    const tenantDB = getPrismaClientForStore(store.dbName);
+    await getStoreOr404(storeId);
+    const tenantDB = await getPrismaClientForStore(storeId);
 
     const categories = await tenantDB.category.findMany({
-      where: { storeId: store.id },
+      where: { storeId },
       orderBy: { name: "asc" }
     });
 
-    return res.json(categories);
-
+    res.json(categories);
   } catch (err) {
     console.error("[getCategories]", err);
+    if (err.message === "STORE_NOT_FOUND") {
+      return res.status(404).json({ error: "Tienda no encontrada" });
+    }
     return res.status(500).json({ error: "Error obteniendo categorías" });
   }
 }
-
 
 /**
  * POST /api/stores/:storeId/categories
@@ -74,7 +72,7 @@ export async function createCategory(req, res) {
     const { name, description } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: "Nombre de categoría es requerido" });
+      return res.status(400).json({ error: "Nombre de categoría requerido" });
     }
 
     const store = await getStoreOr404(storeId);
@@ -83,36 +81,28 @@ export async function createCategory(req, res) {
       return res.status(403).json({ error: "No autorizado" });
     }
 
-    const tenantDB = getPrismaClientForStore(store.dbName);
+    const tenantDB = await getPrismaClientForStore(storeId);
 
     const category = await tenantDB.category.create({
       data: {
         name: name.trim(),
         description: description?.trim() || null,
-        storeId: store.id
+        storeId
       }
     });
 
-    return res.status(201).json(category);
-
+    res.status(201).json(category);
   } catch (err) {
+    console.error("[createCategory]", err);
     if (err.message === "STORE_NOT_FOUND") {
       return res.status(404).json({ error: "Tienda no encontrada" });
     }
-
-    if (err.message === "STORE_WITHOUT_DBNAME") {
-      return res.status(500).json({ error: "La tienda no tiene base de datos asignada" });
-    }
-
     if (err.code === "P2002") {
-      return res.status(400).json({ error: "La categoría ya existe en esta tienda" });
+      return res.status(409).json({ error: "La categoría ya existe" });
     }
-
-    console.error("[createCategory]", err);
     return res.status(500).json({ error: "Error creando categoría" });
   }
 }
-
 
 /**
  * PUT /api/stores/:storeId/categories/:categoryId
@@ -123,24 +113,23 @@ export async function updateCategory(req, res) {
     const { storeId, categoryId } = req.params;
     const { name, description } = req.body;
 
-    const store = await getStoreOr404(storeId, res);
-    if (!store) return;
+    const store = await getStoreOr404(storeId);
 
     if (!canManageStore(req, store)) {
       return res.status(403).json({ error: "No autorizado" });
     }
 
-    const tenantDB = getPrismaClientForStore(store.dbName);
+    const tenantDB = await getPrismaClientForStore(storeId);
 
     const updated = await tenantDB.category.update({
-      where: { id: categoryId },
+      where: { id: Number(categoryId) },
       data: {
         name: name?.trim(),
         description: description?.trim() || null
       }
     });
 
-    return res.json(updated);
+    res.json(updated);
   } catch (err) {
     console.error("[updateCategory]", err);
     if (err.code === "P2025") {
@@ -158,20 +147,19 @@ export async function deleteCategory(req, res) {
   try {
     const { storeId, categoryId } = req.params;
 
-    const store = await getStoreOr404(storeId, res);
-    if (!store) return;
+    const store = await getStoreOr404(storeId);
 
     if (!canManageStore(req, store)) {
       return res.status(403).json({ error: "No autorizado" });
     }
 
-    const tenantDB = getPrismaClientForStore(store.dbName);
+    const tenantDB = await getPrismaClientForStore(storeId);
 
     await tenantDB.category.delete({
-      where: { id: categoryId }
+      where: { id: Number(categoryId) }
     });
 
-    return res.json({ message: "Categoría eliminada" });
+    res.json({ message: "Categoría eliminada" });
   } catch (err) {
     console.error("[deleteCategory]", err);
     if (err.code === "P2025") {

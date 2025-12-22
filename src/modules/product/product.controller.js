@@ -1,9 +1,13 @@
-import prisma from "../../config/db.js"; // BD GLOBAL
-import getPrismaClientForStore from "../../utils/database.js";
+import prisma from "../../config/db.js"; // BD PLATFORM
+import { getPrismaClientForStore } from "../../utils/database.js";
 
-
+/**
+ * Verifica tienda y propietario
+ */
 const assertStoreAndOwner = async (storeId, userId) => {
-  const store = await prisma.store.findUnique({ where: { id: storeId } });
+  const store = await prisma.store.findUnique({
+    where: { id: storeId },
+  });
 
   if (!store) throw { status: 404, message: "La tienda no existe" };
   if (!store.active) throw { status: 403, message: "La tienda no está activa" };
@@ -14,7 +18,7 @@ const assertStoreAndOwner = async (storeId, userId) => {
 };
 
 // =============================
-// Obtener productos del tenant
+// Obtener productos (PÚBLICO)
 // =============================
 export const getProducts = async (req, res) => {
   const { storeId } = req.params;
@@ -24,7 +28,7 @@ export const getProducts = async (req, res) => {
     if (!store || !store.active)
       return res.status(404).json({ error: "La tienda no existe o está inactiva" });
 
-    const tenantDB = getPrismaClientForStore(store.dbName);
+    const tenantDB = await getPrismaClientForStore(storeId);
 
     const products = await tenantDB.product.findMany({
       include: { category: true },
@@ -38,7 +42,7 @@ export const getProducts = async (req, res) => {
 };
 
 // =============================
-// Obtener un producto
+// Obtener un producto (PÚBLICO)
 // =============================
 export const getProduct = async (req, res) => {
   const { storeId, productId } = req.params;
@@ -48,7 +52,7 @@ export const getProduct = async (req, res) => {
     if (!store || !store.active)
       return res.status(404).json({ error: "La tienda no existe o está inactiva" });
 
-    const tenantDB = getPrismaClientForStore(store.dbName);
+    const tenantDB = await getPrismaClientForStore(storeId);
 
     const product = await tenantDB.product.findUnique({
       where: { id: Number(productId) },
@@ -66,7 +70,7 @@ export const getProduct = async (req, res) => {
 };
 
 // =============================
-// Crear producto
+// Crear producto (ADMIN)
 // =============================
 export const createProduct = async (req, res) => {
   const { storeId } = req.params;
@@ -80,12 +84,12 @@ export const createProduct = async (req, res) => {
     if (!name || isNaN(Number(price)))
       return res.status(400).json({ error: "Nombre y precio válidos son requeridos" });
 
-    const store = await assertStoreAndOwner(storeId, userId);
-    const tenantDB = getPrismaClientForStore(store.dbName);
+    await assertStoreAndOwner(storeId, userId);
+    const tenantDB = await getPrismaClientForStore(storeId);
 
     if (categoryId) {
-      const category = await tenantDB.category.findFirst({
-        where: { id: categoryId, storeId },
+      const category = await tenantDB.category.findUnique({
+        where: { id: categoryId },
       });
       if (!category)
         return res.status(404).json({ error: "Categoría no encontrada" });
@@ -110,9 +114,8 @@ export const createProduct = async (req, res) => {
   }
 };
 
-
 // =============================
-// Actualizar producto
+// Actualizar producto (ADMIN)
 // =============================
 export const updateProduct = async (req, res) => {
   const { storeId, productId } = req.params;
@@ -123,20 +126,18 @@ export const updateProduct = async (req, res) => {
     if (!userId)
       return res.status(401).json({ error: "No autenticado" });
 
-    const store = await assertStoreAndOwner(storeId, userId);
-    const tenantDB = getPrismaClientForStore(store.dbName);
+    await assertStoreAndOwner(storeId, userId);
+    const tenantDB = await getPrismaClientForStore(storeId);
 
     const data = {};
 
     if (name !== undefined) data.name = name.trim();
     if (description !== undefined) data.description = description?.trim() || null;
-
     if (price !== undefined) {
       if (isNaN(Number(price)))
         return res.status(400).json({ error: "Precio inválido" });
       data.price = Number(price);
     }
-
     if (stock !== undefined) data.stock = Number(stock);
     if (image !== undefined) data.image = image?.trim() || null;
 
@@ -168,7 +169,7 @@ export const updateProduct = async (req, res) => {
 };
 
 // =============================
-// Eliminar producto
+// Eliminar producto (ADMIN)
 // =============================
 export const deleteProduct = async (req, res) => {
   const { storeId, productId } = req.params;
@@ -178,8 +179,8 @@ export const deleteProduct = async (req, res) => {
     if (!userId)
       return res.status(401).json({ error: "No autenticado" });
 
-    const store = await assertStoreAndOwner(storeId, userId);
-    const tenantDB = getPrismaClientForStore(store.dbName);
+    await assertStoreAndOwner(storeId, userId);
+    const tenantDB = await getPrismaClientForStore(storeId);
 
     const exists = await tenantDB.product.findUnique({
       where: { id: Number(productId) },

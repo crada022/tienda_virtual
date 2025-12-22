@@ -2110,9 +2110,10 @@ export namespace Prisma {
   export type StoreMinAggregateOutputType = {
     id: string | null
     name: string | null
+    slug: string | null
     domain: string | null
+    dbName: string | null
     createdAt: Date | null
-    ownerId: number | null
     active: boolean | null
     address: string | null
     description: string | null
@@ -2121,16 +2122,16 @@ export namespace Prisma {
     bannerUrl: string | null
     layoutType: string | null
     style: string | null
-    dbName: string | null
-    existe: boolean | null
+    ownerId: number | null
   }
 
   export type StoreMaxAggregateOutputType = {
     id: string | null
     name: string | null
+    slug: string | null
     domain: string | null
+    dbName: string | null
     createdAt: Date | null
-    ownerId: number | null
     active: boolean | null
     address: string | null
     description: string | null
@@ -2139,16 +2140,16 @@ export namespace Prisma {
     bannerUrl: string | null
     layoutType: string | null
     style: string | null
-    dbName: string | null
-    existe: boolean | null
+    ownerId: number | null
   }
 
   export type StoreCountAggregateOutputType = {
     id: number
     name: number
+    slug: number
     domain: number
+    dbName: number
     createdAt: number
-    ownerId: number
     active: number
     address: number
     description: number
@@ -2158,8 +2159,7 @@ export namespace Prisma {
     colorTheme: number
     layoutType: number
     style: number
-    dbName: number
-    existe: number
+    ownerId: number
     _all: number
   }
 
@@ -2175,9 +2175,10 @@ export namespace Prisma {
   export type StoreMinAggregateInputType = {
     id?: true
     name?: true
+    slug?: true
     domain?: true
+    dbName?: true
     createdAt?: true
-    ownerId?: true
     active?: true
     address?: true
     description?: true
@@ -2186,16 +2187,16 @@ export namespace Prisma {
     bannerUrl?: true
     layoutType?: true
     style?: true
-    dbName?: true
-    existe?: true
+    ownerId?: true
   }
 
   export type StoreMaxAggregateInputType = {
     id?: true
     name?: true
+    slug?: true
     domain?: true
+    dbName?: true
     createdAt?: true
-    ownerId?: true
     active?: true
     address?: true
     description?: true
@@ -2204,16 +2205,16 @@ export namespace Prisma {
     bannerUrl?: true
     layoutType?: true
     style?: true
-    dbName?: true
-    existe?: true
+    ownerId?: true
   }
 
   export type StoreCountAggregateInputType = {
     id?: true
     name?: true
+    slug?: true
     domain?: true
+    dbName?: true
     createdAt?: true
-    ownerId?: true
     active?: true
     address?: true
     description?: true
@@ -2223,8 +2224,7 @@ export namespace Prisma {
     colorTheme?: true
     layoutType?: true
     style?: true
-    dbName?: true
-    existe?: true
+    ownerId?: true
     _all?: true
   }
 
@@ -2317,9 +2317,10 @@ export namespace Prisma {
   export type StoreGroupByOutputType = {
     id: string
     name: string
+    slug: string
     domain: string | null
+    dbName: string
     createdAt: Date
-    ownerId: number
     active: boolean
     address: string | null
     description: string | null
@@ -2329,8 +2330,7 @@ export namespace Prisma {
     colorTheme: JsonValue | null
     layoutType: string | null
     style: string | null
-    dbName: string
-    existe: boolean | null
+    ownerId: number
     _count: StoreCountAggregateOutputType | null
     _avg: StoreAvgAggregateOutputType | null
     _sum: StoreSumAggregateOutputType | null
@@ -2355,9 +2355,10 @@ export namespace Prisma {
   export type StoreSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     name?: boolean
+    slug?: boolean
     domain?: boolean
+    dbName?: boolean
     createdAt?: boolean
-    ownerId?: boolean
     active?: boolean
     address?: boolean
     description?: boolean
@@ -2367,8 +2368,7 @@ export namespace Prisma {
     colorTheme?: boolean
     layoutType?: boolean
     style?: boolean
-    dbName?: boolean
-    existe?: boolean
+    ownerId?: boolean
     owner?: boolean | UserDefaultArgs<ExtArgs>
     aiTemplates?: boolean | Store$aiTemplatesArgs<ExtArgs>
     _count?: boolean | StoreCountOutputTypeDefaultArgs<ExtArgs>
@@ -2377,9 +2377,10 @@ export namespace Prisma {
   export type StoreSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     name?: boolean
+    slug?: boolean
     domain?: boolean
+    dbName?: boolean
     createdAt?: boolean
-    ownerId?: boolean
     active?: boolean
     address?: boolean
     description?: boolean
@@ -2389,17 +2390,17 @@ export namespace Prisma {
     colorTheme?: boolean
     layoutType?: boolean
     style?: boolean
-    dbName?: boolean
-    existe?: boolean
+    ownerId?: boolean
     owner?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["store"]>
 
   export type StoreSelectScalar = {
     id?: boolean
     name?: boolean
+    slug?: boolean
     domain?: boolean
+    dbName?: boolean
     createdAt?: boolean
-    ownerId?: boolean
     active?: boolean
     address?: boolean
     description?: boolean
@@ -2409,8 +2410,7 @@ export namespace Prisma {
     colorTheme?: boolean
     layoutType?: boolean
     style?: boolean
-    dbName?: boolean
-    existe?: boolean
+    ownerId?: boolean
   }
 
   export type StoreInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -2431,9 +2431,10 @@ export namespace Prisma {
     scalars: $Extensions.GetPayloadResult<{
       id: string
       name: string
+      slug: string
       domain: string | null
+      dbName: string
       createdAt: Date
-      ownerId: number
       active: boolean
       address: string | null
       description: string | null
@@ -2443,8 +2444,7 @@ export namespace Prisma {
       colorTheme: Prisma.JsonValue | null
       layoutType: string | null
       style: string | null
-      dbName: string
-      existe: boolean | null
+      ownerId: number
     }, ExtArgs["result"]["store"]>
     composites: {}
   }
@@ -2842,9 +2842,10 @@ export namespace Prisma {
   interface StoreFieldRefs {
     readonly id: FieldRef<"Store", 'String'>
     readonly name: FieldRef<"Store", 'String'>
+    readonly slug: FieldRef<"Store", 'String'>
     readonly domain: FieldRef<"Store", 'String'>
+    readonly dbName: FieldRef<"Store", 'String'>
     readonly createdAt: FieldRef<"Store", 'DateTime'>
-    readonly ownerId: FieldRef<"Store", 'Int'>
     readonly active: FieldRef<"Store", 'Boolean'>
     readonly address: FieldRef<"Store", 'String'>
     readonly description: FieldRef<"Store", 'String'>
@@ -2854,8 +2855,7 @@ export namespace Prisma {
     readonly colorTheme: FieldRef<"Store", 'Json'>
     readonly layoutType: FieldRef<"Store", 'String'>
     readonly style: FieldRef<"Store", 'String'>
-    readonly dbName: FieldRef<"Store", 'String'>
-    readonly existe: FieldRef<"Store", 'Boolean'>
+    readonly ownerId: FieldRef<"Store", 'Int'>
   }
     
 
@@ -4200,9 +4200,10 @@ export namespace Prisma {
   export const StoreScalarFieldEnum: {
     id: 'id',
     name: 'name',
+    slug: 'slug',
     domain: 'domain',
+    dbName: 'dbName',
     createdAt: 'createdAt',
-    ownerId: 'ownerId',
     active: 'active',
     address: 'address',
     description: 'description',
@@ -4212,8 +4213,7 @@ export namespace Prisma {
     colorTheme: 'colorTheme',
     layoutType: 'layoutType',
     style: 'style',
-    dbName: 'dbName',
-    existe: 'existe'
+    ownerId: 'ownerId'
   };
 
   export type StoreScalarFieldEnum = (typeof StoreScalarFieldEnum)[keyof typeof StoreScalarFieldEnum]
@@ -4438,9 +4438,10 @@ export namespace Prisma {
     NOT?: StoreWhereInput | StoreWhereInput[]
     id?: StringFilter<"Store"> | string
     name?: StringFilter<"Store"> | string
+    slug?: StringFilter<"Store"> | string
     domain?: StringNullableFilter<"Store"> | string | null
+    dbName?: StringFilter<"Store"> | string
     createdAt?: DateTimeFilter<"Store"> | Date | string
-    ownerId?: IntFilter<"Store"> | number
     active?: BoolFilter<"Store"> | boolean
     address?: StringNullableFilter<"Store"> | string | null
     description?: StringNullableFilter<"Store"> | string | null
@@ -4450,8 +4451,7 @@ export namespace Prisma {
     colorTheme?: JsonNullableFilter<"Store">
     layoutType?: StringNullableFilter<"Store"> | string | null
     style?: StringNullableFilter<"Store"> | string | null
-    dbName?: StringFilter<"Store"> | string
-    existe?: BoolNullableFilter<"Store"> | boolean | null
+    ownerId?: IntFilter<"Store"> | number
     owner?: XOR<UserRelationFilter, UserWhereInput>
     aiTemplates?: AITemplateListRelationFilter
   }
@@ -4459,9 +4459,10 @@ export namespace Prisma {
   export type StoreOrderByWithRelationInput = {
     id?: SortOrder
     name?: SortOrder
+    slug?: SortOrder
     domain?: SortOrderInput | SortOrder
+    dbName?: SortOrder
     createdAt?: SortOrder
-    ownerId?: SortOrder
     active?: SortOrder
     address?: SortOrderInput | SortOrder
     description?: SortOrderInput | SortOrder
@@ -4471,22 +4472,21 @@ export namespace Prisma {
     colorTheme?: SortOrderInput | SortOrder
     layoutType?: SortOrderInput | SortOrder
     style?: SortOrderInput | SortOrder
-    dbName?: SortOrder
-    existe?: SortOrderInput | SortOrder
+    ownerId?: SortOrder
     owner?: UserOrderByWithRelationInput
     aiTemplates?: AITemplateOrderByRelationAggregateInput
   }
 
   export type StoreWhereUniqueInput = Prisma.AtLeast<{
     id?: string
+    slug?: string
+    domain?: string
     dbName?: string
     AND?: StoreWhereInput | StoreWhereInput[]
     OR?: StoreWhereInput[]
     NOT?: StoreWhereInput | StoreWhereInput[]
     name?: StringFilter<"Store"> | string
-    domain?: StringNullableFilter<"Store"> | string | null
     createdAt?: DateTimeFilter<"Store"> | Date | string
-    ownerId?: IntFilter<"Store"> | number
     active?: BoolFilter<"Store"> | boolean
     address?: StringNullableFilter<"Store"> | string | null
     description?: StringNullableFilter<"Store"> | string | null
@@ -4496,17 +4496,18 @@ export namespace Prisma {
     colorTheme?: JsonNullableFilter<"Store">
     layoutType?: StringNullableFilter<"Store"> | string | null
     style?: StringNullableFilter<"Store"> | string | null
-    existe?: BoolNullableFilter<"Store"> | boolean | null
+    ownerId?: IntFilter<"Store"> | number
     owner?: XOR<UserRelationFilter, UserWhereInput>
     aiTemplates?: AITemplateListRelationFilter
-  }, "id" | "dbName">
+  }, "id" | "slug" | "domain" | "dbName">
 
   export type StoreOrderByWithAggregationInput = {
     id?: SortOrder
     name?: SortOrder
+    slug?: SortOrder
     domain?: SortOrderInput | SortOrder
+    dbName?: SortOrder
     createdAt?: SortOrder
-    ownerId?: SortOrder
     active?: SortOrder
     address?: SortOrderInput | SortOrder
     description?: SortOrderInput | SortOrder
@@ -4516,8 +4517,7 @@ export namespace Prisma {
     colorTheme?: SortOrderInput | SortOrder
     layoutType?: SortOrderInput | SortOrder
     style?: SortOrderInput | SortOrder
-    dbName?: SortOrder
-    existe?: SortOrderInput | SortOrder
+    ownerId?: SortOrder
     _count?: StoreCountOrderByAggregateInput
     _avg?: StoreAvgOrderByAggregateInput
     _max?: StoreMaxOrderByAggregateInput
@@ -4531,9 +4531,10 @@ export namespace Prisma {
     NOT?: StoreScalarWhereWithAggregatesInput | StoreScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"Store"> | string
     name?: StringWithAggregatesFilter<"Store"> | string
+    slug?: StringWithAggregatesFilter<"Store"> | string
     domain?: StringNullableWithAggregatesFilter<"Store"> | string | null
+    dbName?: StringWithAggregatesFilter<"Store"> | string
     createdAt?: DateTimeWithAggregatesFilter<"Store"> | Date | string
-    ownerId?: IntWithAggregatesFilter<"Store"> | number
     active?: BoolWithAggregatesFilter<"Store"> | boolean
     address?: StringNullableWithAggregatesFilter<"Store"> | string | null
     description?: StringNullableWithAggregatesFilter<"Store"> | string | null
@@ -4543,8 +4544,7 @@ export namespace Prisma {
     colorTheme?: JsonNullableWithAggregatesFilter<"Store">
     layoutType?: StringNullableWithAggregatesFilter<"Store"> | string | null
     style?: StringNullableWithAggregatesFilter<"Store"> | string | null
-    dbName?: StringWithAggregatesFilter<"Store"> | string
-    existe?: BoolNullableWithAggregatesFilter<"Store"> | boolean | null
+    ownerId?: IntWithAggregatesFilter<"Store"> | number
   }
 
   export type AITemplateWhereInput = {
@@ -4671,7 +4671,9 @@ export namespace Prisma {
   export type StoreCreateInput = {
     id?: string
     name: string
+    slug: string
     domain?: string | null
+    dbName: string
     createdAt?: Date | string
     active?: boolean
     address?: string | null
@@ -4682,8 +4684,6 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: string | null
     style?: string | null
-    dbName: string
-    existe?: boolean | null
     owner: UserCreateNestedOneWithoutStoresInput
     aiTemplates?: AITemplateCreateNestedManyWithoutStoreInput
   }
@@ -4691,9 +4691,10 @@ export namespace Prisma {
   export type StoreUncheckedCreateInput = {
     id?: string
     name: string
+    slug: string
     domain?: string | null
+    dbName: string
     createdAt?: Date | string
-    ownerId: number
     active?: boolean
     address?: string | null
     description?: string | null
@@ -4703,15 +4704,16 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: string | null
     style?: string | null
-    dbName: string
-    existe?: boolean | null
+    ownerId: number
     aiTemplates?: AITemplateUncheckedCreateNestedManyWithoutStoreInput
   }
 
   export type StoreUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
     domain?: NullableStringFieldUpdateOperationsInput | string | null
+    dbName?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     active?: BoolFieldUpdateOperationsInput | boolean
     address?: NullableStringFieldUpdateOperationsInput | string | null
@@ -4722,8 +4724,6 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: NullableStringFieldUpdateOperationsInput | string | null
     style?: NullableStringFieldUpdateOperationsInput | string | null
-    dbName?: StringFieldUpdateOperationsInput | string
-    existe?: NullableBoolFieldUpdateOperationsInput | boolean | null
     owner?: UserUpdateOneRequiredWithoutStoresNestedInput
     aiTemplates?: AITemplateUpdateManyWithoutStoreNestedInput
   }
@@ -4731,9 +4731,10 @@ export namespace Prisma {
   export type StoreUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
     domain?: NullableStringFieldUpdateOperationsInput | string | null
+    dbName?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ownerId?: IntFieldUpdateOperationsInput | number
     active?: BoolFieldUpdateOperationsInput | boolean
     address?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
@@ -4743,17 +4744,17 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: NullableStringFieldUpdateOperationsInput | string | null
     style?: NullableStringFieldUpdateOperationsInput | string | null
-    dbName?: StringFieldUpdateOperationsInput | string
-    existe?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ownerId?: IntFieldUpdateOperationsInput | number
     aiTemplates?: AITemplateUncheckedUpdateManyWithoutStoreNestedInput
   }
 
   export type StoreCreateManyInput = {
     id?: string
     name: string
+    slug: string
     domain?: string | null
+    dbName: string
     createdAt?: Date | string
-    ownerId: number
     active?: boolean
     address?: string | null
     description?: string | null
@@ -4763,14 +4764,15 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: string | null
     style?: string | null
-    dbName: string
-    existe?: boolean | null
+    ownerId: number
   }
 
   export type StoreUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
     domain?: NullableStringFieldUpdateOperationsInput | string | null
+    dbName?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     active?: BoolFieldUpdateOperationsInput | boolean
     address?: NullableStringFieldUpdateOperationsInput | string | null
@@ -4781,16 +4783,15 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: NullableStringFieldUpdateOperationsInput | string | null
     style?: NullableStringFieldUpdateOperationsInput | string | null
-    dbName?: StringFieldUpdateOperationsInput | string
-    existe?: NullableBoolFieldUpdateOperationsInput | boolean | null
   }
 
   export type StoreUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
     domain?: NullableStringFieldUpdateOperationsInput | string | null
+    dbName?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ownerId?: IntFieldUpdateOperationsInput | number
     active?: BoolFieldUpdateOperationsInput | boolean
     address?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
@@ -4800,8 +4801,7 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: NullableStringFieldUpdateOperationsInput | string | null
     style?: NullableStringFieldUpdateOperationsInput | string | null
-    dbName?: StringFieldUpdateOperationsInput | string
-    existe?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ownerId?: IntFieldUpdateOperationsInput | number
   }
 
   export type AITemplateCreateInput = {
@@ -5068,11 +5068,6 @@ export namespace Prisma {
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
-  export type BoolNullableFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel> | null
-    not?: NestedBoolNullableFilter<$PrismaModel> | boolean | null
-  }
-
   export type UserRelationFilter = {
     is?: UserWhereInput
     isNot?: UserWhereInput
@@ -5091,9 +5086,10 @@ export namespace Prisma {
   export type StoreCountOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
+    slug?: SortOrder
     domain?: SortOrder
+    dbName?: SortOrder
     createdAt?: SortOrder
-    ownerId?: SortOrder
     active?: SortOrder
     address?: SortOrder
     description?: SortOrder
@@ -5103,8 +5099,7 @@ export namespace Prisma {
     colorTheme?: SortOrder
     layoutType?: SortOrder
     style?: SortOrder
-    dbName?: SortOrder
-    existe?: SortOrder
+    ownerId?: SortOrder
   }
 
   export type StoreAvgOrderByAggregateInput = {
@@ -5114,9 +5109,10 @@ export namespace Prisma {
   export type StoreMaxOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
+    slug?: SortOrder
     domain?: SortOrder
+    dbName?: SortOrder
     createdAt?: SortOrder
-    ownerId?: SortOrder
     active?: SortOrder
     address?: SortOrder
     description?: SortOrder
@@ -5125,16 +5121,16 @@ export namespace Prisma {
     bannerUrl?: SortOrder
     layoutType?: SortOrder
     style?: SortOrder
-    dbName?: SortOrder
-    existe?: SortOrder
+    ownerId?: SortOrder
   }
 
   export type StoreMinOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
+    slug?: SortOrder
     domain?: SortOrder
+    dbName?: SortOrder
     createdAt?: SortOrder
-    ownerId?: SortOrder
     active?: SortOrder
     address?: SortOrder
     description?: SortOrder
@@ -5143,8 +5139,7 @@ export namespace Prisma {
     bannerUrl?: SortOrder
     layoutType?: SortOrder
     style?: SortOrder
-    dbName?: SortOrder
-    existe?: SortOrder
+    ownerId?: SortOrder
   }
 
   export type StoreSumOrderByAggregateInput = {
@@ -5182,14 +5177,6 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedJsonNullableFilter<$PrismaModel>
     _max?: NestedJsonNullableFilter<$PrismaModel>
-  }
-
-  export type BoolNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel> | null
-    not?: NestedBoolNullableWithAggregatesFilter<$PrismaModel> | boolean | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedBoolNullableFilter<$PrismaModel>
-    _max?: NestedBoolNullableFilter<$PrismaModel>
   }
   export type JsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
@@ -5362,10 +5349,6 @@ export namespace Prisma {
 
   export type BoolFieldUpdateOperationsInput = {
     set?: boolean
-  }
-
-  export type NullableBoolFieldUpdateOperationsInput = {
-    set?: boolean | null
   }
 
   export type UserUpdateOneRequiredWithoutStoresNestedInput = {
@@ -5576,11 +5559,6 @@ export namespace Prisma {
     not?: NestedBoolFilter<$PrismaModel> | boolean
   }
 
-  export type NestedBoolNullableFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel> | null
-    not?: NestedBoolNullableFilter<$PrismaModel> | boolean | null
-  }
-
   export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
     equals?: boolean | BooleanFieldRefInput<$PrismaModel>
     not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
@@ -5610,14 +5588,6 @@ export namespace Prisma {
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
-
-  export type NestedBoolNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel> | null
-    not?: NestedBoolNullableWithAggregatesFilter<$PrismaModel> | boolean | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedBoolNullableFilter<$PrismaModel>
-    _max?: NestedBoolNullableFilter<$PrismaModel>
-  }
   export type NestedJsonFilter<$PrismaModel = never> = 
     | PatchUndefined<
         Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
@@ -5644,7 +5614,9 @@ export namespace Prisma {
   export type StoreCreateWithoutOwnerInput = {
     id?: string
     name: string
+    slug: string
     domain?: string | null
+    dbName: string
     createdAt?: Date | string
     active?: boolean
     address?: string | null
@@ -5655,15 +5627,15 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: string | null
     style?: string | null
-    dbName: string
-    existe?: boolean | null
     aiTemplates?: AITemplateCreateNestedManyWithoutStoreInput
   }
 
   export type StoreUncheckedCreateWithoutOwnerInput = {
     id?: string
     name: string
+    slug: string
     domain?: string | null
+    dbName: string
     createdAt?: Date | string
     active?: boolean
     address?: string | null
@@ -5674,8 +5646,6 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: string | null
     style?: string | null
-    dbName: string
-    existe?: boolean | null
     aiTemplates?: AITemplateUncheckedCreateNestedManyWithoutStoreInput
   }
 
@@ -5711,9 +5681,10 @@ export namespace Prisma {
     NOT?: StoreScalarWhereInput | StoreScalarWhereInput[]
     id?: StringFilter<"Store"> | string
     name?: StringFilter<"Store"> | string
+    slug?: StringFilter<"Store"> | string
     domain?: StringNullableFilter<"Store"> | string | null
+    dbName?: StringFilter<"Store"> | string
     createdAt?: DateTimeFilter<"Store"> | Date | string
-    ownerId?: IntFilter<"Store"> | number
     active?: BoolFilter<"Store"> | boolean
     address?: StringNullableFilter<"Store"> | string | null
     description?: StringNullableFilter<"Store"> | string | null
@@ -5723,8 +5694,7 @@ export namespace Prisma {
     colorTheme?: JsonNullableFilter<"Store">
     layoutType?: StringNullableFilter<"Store"> | string | null
     style?: StringNullableFilter<"Store"> | string | null
-    dbName?: StringFilter<"Store"> | string
-    existe?: BoolNullableFilter<"Store"> | boolean | null
+    ownerId?: IntFilter<"Store"> | number
   }
 
   export type UserCreateWithoutStoresInput = {
@@ -5830,7 +5800,9 @@ export namespace Prisma {
   export type StoreCreateWithoutAiTemplatesInput = {
     id?: string
     name: string
+    slug: string
     domain?: string | null
+    dbName: string
     createdAt?: Date | string
     active?: boolean
     address?: string | null
@@ -5841,17 +5813,16 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: string | null
     style?: string | null
-    dbName: string
-    existe?: boolean | null
     owner: UserCreateNestedOneWithoutStoresInput
   }
 
   export type StoreUncheckedCreateWithoutAiTemplatesInput = {
     id?: string
     name: string
+    slug: string
     domain?: string | null
+    dbName: string
     createdAt?: Date | string
-    ownerId: number
     active?: boolean
     address?: string | null
     description?: string | null
@@ -5861,8 +5832,7 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: string | null
     style?: string | null
-    dbName: string
-    existe?: boolean | null
+    ownerId: number
   }
 
   export type StoreCreateOrConnectWithoutAiTemplatesInput = {
@@ -5884,7 +5854,9 @@ export namespace Prisma {
   export type StoreUpdateWithoutAiTemplatesInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
     domain?: NullableStringFieldUpdateOperationsInput | string | null
+    dbName?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     active?: BoolFieldUpdateOperationsInput | boolean
     address?: NullableStringFieldUpdateOperationsInput | string | null
@@ -5895,17 +5867,16 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: NullableStringFieldUpdateOperationsInput | string | null
     style?: NullableStringFieldUpdateOperationsInput | string | null
-    dbName?: StringFieldUpdateOperationsInput | string
-    existe?: NullableBoolFieldUpdateOperationsInput | boolean | null
     owner?: UserUpdateOneRequiredWithoutStoresNestedInput
   }
 
   export type StoreUncheckedUpdateWithoutAiTemplatesInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
     domain?: NullableStringFieldUpdateOperationsInput | string | null
+    dbName?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ownerId?: IntFieldUpdateOperationsInput | number
     active?: BoolFieldUpdateOperationsInput | boolean
     address?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
@@ -5915,14 +5886,15 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: NullableStringFieldUpdateOperationsInput | string | null
     style?: NullableStringFieldUpdateOperationsInput | string | null
-    dbName?: StringFieldUpdateOperationsInput | string
-    existe?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ownerId?: IntFieldUpdateOperationsInput | number
   }
 
   export type StoreCreateManyOwnerInput = {
     id?: string
     name: string
+    slug: string
     domain?: string | null
+    dbName: string
     createdAt?: Date | string
     active?: boolean
     address?: string | null
@@ -5933,14 +5905,14 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: string | null
     style?: string | null
-    dbName: string
-    existe?: boolean | null
   }
 
   export type StoreUpdateWithoutOwnerInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
     domain?: NullableStringFieldUpdateOperationsInput | string | null
+    dbName?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     active?: BoolFieldUpdateOperationsInput | boolean
     address?: NullableStringFieldUpdateOperationsInput | string | null
@@ -5951,15 +5923,15 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: NullableStringFieldUpdateOperationsInput | string | null
     style?: NullableStringFieldUpdateOperationsInput | string | null
-    dbName?: StringFieldUpdateOperationsInput | string
-    existe?: NullableBoolFieldUpdateOperationsInput | boolean | null
     aiTemplates?: AITemplateUpdateManyWithoutStoreNestedInput
   }
 
   export type StoreUncheckedUpdateWithoutOwnerInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
     domain?: NullableStringFieldUpdateOperationsInput | string | null
+    dbName?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     active?: BoolFieldUpdateOperationsInput | boolean
     address?: NullableStringFieldUpdateOperationsInput | string | null
@@ -5970,15 +5942,15 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: NullableStringFieldUpdateOperationsInput | string | null
     style?: NullableStringFieldUpdateOperationsInput | string | null
-    dbName?: StringFieldUpdateOperationsInput | string
-    existe?: NullableBoolFieldUpdateOperationsInput | boolean | null
     aiTemplates?: AITemplateUncheckedUpdateManyWithoutStoreNestedInput
   }
 
   export type StoreUncheckedUpdateManyWithoutOwnerInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
     domain?: NullableStringFieldUpdateOperationsInput | string | null
+    dbName?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     active?: BoolFieldUpdateOperationsInput | boolean
     address?: NullableStringFieldUpdateOperationsInput | string | null
@@ -5989,8 +5961,6 @@ export namespace Prisma {
     colorTheme?: NullableJsonNullValueInput | InputJsonValue
     layoutType?: NullableStringFieldUpdateOperationsInput | string | null
     style?: NullableStringFieldUpdateOperationsInput | string | null
-    dbName?: StringFieldUpdateOperationsInput | string
-    existe?: NullableBoolFieldUpdateOperationsInput | boolean | null
   }
 
   export type AITemplateCreateManyStoreInput = {

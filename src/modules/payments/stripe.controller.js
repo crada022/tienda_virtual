@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import platformPrisma from "../../config/db.js";
-import { getTenantPrisma } from "../../prisma/tenant.js";
+
 
 const stripeSecret =
   process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY;

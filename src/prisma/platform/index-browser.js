@@ -134,9 +134,10 @@ exports.Prisma.UserScalarFieldEnum = {
 exports.Prisma.StoreScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  slug: 'slug',
   domain: 'domain',
+  dbName: 'dbName',
   createdAt: 'createdAt',
-  ownerId: 'ownerId',
   active: 'active',
   address: 'address',
   description: 'description',
@@ -146,8 +147,7 @@ exports.Prisma.StoreScalarFieldEnum = {
   colorTheme: 'colorTheme',
   layoutType: 'layoutType',
   style: 'style',
-  dbName: 'dbName',
-  existe: 'existe'
+  ownerId: 'ownerId'
 };
 
 exports.Prisma.AITemplateScalarFieldEnum = {

@@ -1,10 +1,10 @@
 import express from "express";
-import { resolveTenant } from "../middleware/resolveTenant.js";
+import { resolveStore } from "../middleware/resolveTenant.js";
 import * as cartService from "./cart.service.js";
 
 const router = express.Router();
 
-router.get("/:customerId", resolveTenant, async (req, res) => {
+router.get("/:customerId", resolveStore, async (req, res) => {
   try {
     const cart = await cartService.getCartByCustomer(req.tenantPrisma, req.params.customerId);
     res.json(cart);
@@ -14,7 +14,7 @@ router.get("/:customerId", resolveTenant, async (req, res) => {
   }
 });
 
-router.post("/:customerId/add", resolveTenant, async (req, res) => {
+router.post("/:customerId/add", resolveStore, async (req, res) => {
   const { productId, quantity } = req.body;
   try {
     const item = await cartService.addItemToCart(req.tenantPrisma, req.params.customerId, productId, quantity);

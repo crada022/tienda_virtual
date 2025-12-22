@@ -1,18 +1,18 @@
-import { platformPrisma } from "../../prisma/platform.js";
-import getPrismaClientForStore from "../../utils/database.js";
-import { createDatabaseForStore } from "../../utils/createDatabase.js";
+import { platformPrisma } from "../../config/db.js";
+import { getPrismaClientForStore } from "../../utils/database.js";
 import { updateStoreSchema } from "./store.validation.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { uploadBannerToCloudinary } from "./store.media.service.js";
+import { getStoreFromRequest } from "../../utils/getStoreFromRequest.js";
 
 /* 🤖 IA */
 import { generateStoreTemplate } from "../ai/ai.service.js";
 import { generateAndUploadBanner } from "../ai/banner.service.js";
 
 /* =========================
-   MULTER – LOGO / BANNER MANUAL
+   MULTER – LOGO / BANNER
 ========================= */
 const logoStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -41,9 +41,6 @@ export const uploadLogo = upload.single("logo");
 /* =========================
    HELPERS
 ========================= */
-const generateDBName = (storeName) =>
-  "store_" + storeName.toLowerCase().replace(/\s+/g, "_");
-
 function getUserInfoFromReq(req) {
   const payload = req.user || req.userPayload;
   if (!payload) return { id: null, role: null };
@@ -103,20 +100,33 @@ export async function getStoreById(req, res) {
 ========================= */
 export async function createStore(req, res) {
   try {
+    const { name, domain } = req.body;
     const user = getUserInfoFromReq(req);
-    if (!user.id) return res.status(401).json({ message: "No autorizado" });
 
-    const dbName = generateDBName(req.body.name);
+    if (!domain) {
+      return res.status(400).json({ error: "El dominio es obligatorio" });
+    }
+
+    const cleanDomain = domain
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/\/$/, "");
+
+    const exists = await platformPrisma.store.findUnique({
+      where: { domain: cleanDomain }
+    });
+
+    if (exists) {
+      return res.status(400).json({ error: "Dominio ya en uso" });
+    }
 
     const store = await platformPrisma.store.create({
       data: {
-        ...req.body,
-        ownerId: user.id,
-        dbName
+        name,
+        domain: cleanDomain,
+        ownerId: user.id
       }
     });
-
-    await createDatabaseForStore(dbName);
 
     res.status(201).json(store);
   } catch (err) {
@@ -126,7 +136,7 @@ export async function createStore(req, res) {
 }
 
 /* =========================
-   UPDATE STORE (MANUAL)
+   UPDATE STORE
 ========================= */
 export async function updateStore(req, res) {
   try {
@@ -145,14 +155,12 @@ export async function updateStore(req, res) {
 
     const payload = { ...(req.body || {}) };
 
-   if (req.file) {
-  const bannerUrl = await uploadBannerToCloudinary(
-    req.file.path,
-    store.id
-  );
-  payload.bannerUrl = bannerUrl;
-}
-
+    if (req.file) {
+      payload.bannerUrl = await uploadBannerToCloudinary(
+        req.file.path,
+        store.id
+      );
+    }
 
     const { value, error } = updateStoreSchema.validate(payload, {
       stripUnknown: true
@@ -163,7 +171,7 @@ export async function updateStore(req, res) {
     }
 
     const updated = await platformPrisma.store.update({
-      where: { id: req.params.id },
+      where: { id: store.id },
       data: value
     });
 
@@ -175,58 +183,17 @@ export async function updateStore(req, res) {
 }
 
 /* =========================
-   DELETE STORE
-========================= */
-export async function deleteStore(req, res) {
-  try {
-    const user = getUserInfoFromReq(req);
-    if (!user.id) return res.status(401).json({ message: "No autorizado" });
-
-    const store = await platformPrisma.store.findUnique({
-      where: { id: req.params.id }
-    });
-
-    if (!store) return res.status(404).json({ message: "Tienda no encontrada" });
-
-    if (store.ownerId !== user.id && user.role !== "ADMIN") {
-      return res.status(403).json({ message: "No autorizado" });
-    }
-
-    await platformPrisma.store.delete({
-      where: { id: req.params.id }
-    });
-
-    res.json({ message: "Tienda eliminada" });
-  } catch (err) {
-    console.error("[deleteStore]", err);
-    res.status(500).json({ message: "Error eliminando tienda" });
-  }
-}
-
-/* =========================
-   PUBLIC STORE + PRODUCTS
+   PUBLIC STORE (SLUG / DOMAIN)
 ========================= */
 export async function getStorePublic(req, res) {
   try {
-    const store = await platformPrisma.store.findUnique({
-      where: { id: req.params.id }
-    });
+    const store = await getStoreFromRequest(req);
 
     if (!store || !store.active) {
       return res.status(404).json({ message: "Tienda no encontrada" });
     }
 
-    const tenant = getPrismaClientForStore(store.dbName);
-
-    let products = [];
-    try {
-      products = await tenant.product.findMany({
-        include: { category: true },
-        orderBy: { createdAt: "desc" }
-      });
-    } catch {}
-
-    res.json({ ...store, products });
+    res.json(store);
   } catch (err) {
     console.error("[getStorePublic]", err);
     res.status(500).json({ message: "Error obteniendo tienda" });
@@ -234,77 +201,89 @@ export async function getStorePublic(req, res) {
 }
 
 /* =========================
-   🤖 AI – GENERATE FULL STORE DESIGN
+   PUBLIC PRODUCTS
 ========================= */
-export async function generateStoreWithAI(req, res) {
+export async function getStoreProductsPublic(req, res) {
+  try {
+    const { storeId } = req.params;
+
+    if (!storeId) {
+      return res.status(400).json({ error: "storeId requerido" });
+    }
+
+    // 1️⃣ Buscar tienda en plataforma
+    const store = await platformPrisma.store.findUnique({
+      where: { id: storeId }
+    });
+
+    if (!store || !store.active) {
+      return res.status(404).json({ error: "Tienda no encontrada o inactiva" });
+    }
+
+    if (!store.dbName) {
+      console.error("Store sin dbName:", store);
+      return res.status(500).json({ error: "Tienda mal configurada (sin dbName)" });
+    }
+
+    // 2️⃣ Prisma del tenant
+    const tenantDB = await getPrismaClientForStore(store.id);
+
+    // 3️⃣ Productos
+    const products = await tenantDB.product.findMany({
+      include: { category: true },
+      orderBy: { createdAt: "desc" }
+    });
+
+    return res.json(products);
+
+  } catch (err) {
+    console.error("[getStoreProductsPublic]", err);
+    return res.status(500).json({ error: "Error obteniendo productos públicos" });
+  }
+}
+/* =========================
+   DELETE STORE
+========================= */
+export async function deleteStore(req, res) {
   try {
     const user = getUserInfoFromReq(req);
-    if (!user.id) return res.status(401).json({ message: "No autorizado" });
+    if (!user.id) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+
+    const storeId = req.params.id;
 
     const store = await platformPrisma.store.findUnique({
-      where: { id: req.params.id }
+      where: { id: storeId }
     });
 
     if (!store) {
       return res.status(404).json({ message: "Tienda no encontrada" });
     }
 
-    // 1️⃣ Generar diseño con IA
-    const template = await generateStoreTemplate(
-      store.description || store.name
-    );
+    // Solo dueño o ADMIN
+    if (store.ownerId !== user.id && user.role !== "ADMIN") {
+      return res.status(403).json({ message: "No autorizado" });
+    }
 
-    // 2️⃣ Generar banner real
-    const bannerUrl = await generateAndUploadBanner(
-      template.banner.imagePrompt,
-      store.id
-    );
-
-    // 3️⃣ Guardar configuración
-    const updated = await platformPrisma.store.update({
-      where: { id: store.id },
-      data: {
-        name: template.name,
-        description: template.description,
-        bannerUrl,
-        colorTheme: template.colorTheme,
-        layoutType: template.layoutType,
-        style: template.style
-      }
+    /**
+     * 🔒 Buenas prácticas:
+     * En lugar de borrar físicamente:
+     *  - se marca como inactive
+     *  - se conserva la DB tenant
+     */
+    await platformPrisma.store.update({
+      where: { id: storeId },
+      data: { active: false }
     });
 
     res.json({
-      message: "Diseño generado con IA",
-      store: updated
+      message: "Tienda desactivada correctamente"
     });
   } catch (err) {
-    console.error("[generateStoreWithAI]", err);
-    res.status(500).json({ message: "Error generando diseño con IA" });
-  }
-}
-/* =========================
-   PUBLIC PRODUCTS ONLY
-========================= */
-export async function getStoreProductsPublic(req, res) {
-  try {
-    const store = await platformPrisma.store.findUnique({
-      where: { id: req.params.id }
+    console.error("[deleteStore]", err);
+    res.status(500).json({
+      message: "Error eliminando tienda"
     });
-
-    if (!store || !store.active) {
-      return res.status(404).json({ message: "Tienda no encontrada" });
-    }
-
-    const tenant = getPrismaClientForStore(store.dbName);
-
-    const products = await tenant.product.findMany({
-      include: { category: true },
-      orderBy: { createdAt: "desc" }
-    });
-
-    res.json(products);
-  } catch (err) {
-    console.error("[getStoreProductsPublic]", err);
-    res.status(500).json({ message: "Error obteniendo productos" });
   }
 }

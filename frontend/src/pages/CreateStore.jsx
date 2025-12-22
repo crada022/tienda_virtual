@@ -37,9 +37,15 @@ export default function CreateStore() {
       newErrors.phone = "Formato de teléfono inválido";
     }
 
-    if (form.domain && !/^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i.test(form.domain)) {
-      newErrors.domain = "Formato de dominio inválido (ej: mitienda.com)";
-    }
+   if (useAI && !form.domain.trim()) {
+  newErrors.domain = "El dominio es obligatorio para generación con IA";
+} else if (
+  form.domain &&
+  !/^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i.test(form.domain)
+) {
+  newErrors.domain = "Formato de dominio inválido (ej: mitienda.com)";
+}
+
 
     if (useAI && !form.description.trim()) {
       newErrors.description = "La descripción es requerida para generación con IA";
@@ -80,14 +86,19 @@ export default function CreateStore() {
 
     try {
       if (useAI) {
-        const prompt = form.description || `Crea una tienda moderna llamada ${form.name || "Mi tienda"}.`;
-        const result = await createStoreWithAI(prompt);
-        
-        // Mostrar mensaje de éxito
-        alert("¡Tienda generada exitosamente con IA! 🎉");
-        navigate("/stores/list");
-        return;
-      }
+  const prompt =
+    form.description ||
+    `Crea una tienda moderna llamada ${form.name || "Mi tienda"}.`;
+
+  const result = await createStoreWithAI({
+    prompt,
+    domain: form.domain
+  });
+
+  alert("¡Tienda generada exitosamente con IA! 🎉");
+  navigate("/stores/list");
+  return;
+}
 
       const payload = {
         name: form.name,
@@ -215,10 +226,15 @@ export default function CreateStore() {
 
                 {/* Dominio */}
                 <div className="form-group">
-                  <label htmlFor="domain" className="form-label">
-                    Dominio / Subdominio
-                    <span className="optional-badge">opcional</span>
-                  </label>
+                 <label htmlFor="domain" className="form-label">
+  Dominio / Subdominio
+  {useAI ? (
+    <span className="required">*</span>
+  ) : (
+    <span className="optional-badge">opcional</span>
+  )}
+</label>
+
                   <div className="input-with-icon">
                     <svg className="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10"></circle>

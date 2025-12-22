@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import getPrismaClientForStore from "../../utils/database.js";
+import { getPrismaClientForStore } from "../../utils/database.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -9,8 +9,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
  * REGISTER CUSTOMER
  * =======================
  */
-export async function registerCustomer(dbName, { email, password, name }) {
-  const prisma = getPrismaClientForStore(dbName);
+export async function registerCustomer(storeId, { email, password, name }) {
+  const prisma = await getPrismaClientForStore(storeId);
 
   const exists = await prisma.customer.findUnique({ where: { email } });
   if (exists) {
@@ -27,7 +27,20 @@ export async function registerCustomer(dbName, { email, password, name }) {
     }
   });
 
+  // 🔐 TOKEN IGUAL QUE LOGIN
+  const token = jwt.sign(
+    {
+      sub: customer.id,
+      email: customer.email,
+      storeId,          // 🔥 CLAVE
+      type: "CUSTOMER"
+    },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+
   return {
+    token,
     customer: {
       id: customer.id,
       email: customer.email,
@@ -36,13 +49,14 @@ export async function registerCustomer(dbName, { email, password, name }) {
   };
 }
 
+
 /**
  * =======================
  * LOGIN CUSTOMER
  * =======================
  */
-export async function loginCustomer(dbName, { email, password }) {
-  const prisma = getPrismaClientForStore(dbName);
+export async function loginCustomer(storeId, { email, password }) {
+  const prisma = await getPrismaClientForStore(storeId);
 
   const customer = await prisma.customer.findUnique({ where: { email } });
   if (!customer) {
@@ -54,12 +68,11 @@ export async function loginCustomer(dbName, { email, password }) {
     throw new Error("Credenciales inválidas");
   }
 
-  // ✅ TOKEN CORRECTO
   const token = jwt.sign(
     {
       sub: customer.id,
       email: customer.email,
-      storeId: dbName,          // 🔑 CLAVE
+      storeId,              // ✅ STORE ID REAL
       type: "CUSTOMER"
     },
     JWT_SECRET,
